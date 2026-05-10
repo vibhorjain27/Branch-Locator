@@ -3018,8 +3018,6 @@ function buildTrueBranchIndexes() {
 }
 
 function updateMapColors() {
-  // Manual RGB interpolation — avoids d3.interpolate() SVG compatibility issues
-  // Dark purple (#18103a) → Poonawalla purple (#A78BFA) on sqrt scale
   function poonaFill(count) {
     if (!count || !POONA_MAX_COUNT) return '#0c1520';
     var t = Math.sqrt(count) / Math.sqrt(POONA_MAX_COUNT);
@@ -3034,7 +3032,9 @@ function updateMapColors() {
     var stateName = this.dataset.state;
     var count = POONA_STATE_COUNTS[stateName] || 0;
     var fill  = poonaFill(count);
-    d3.select(this).attr('fill', fill).attr('data-base-fill', fill);
+    d3.select(this)
+      .style('fill', fill)
+      .attr('data-base-fill', fill);
   });
 
   buildLegend(POONA_MAX_COUNT);
@@ -3064,47 +3064,56 @@ function buildLegend(maxVal) {
 const tooltip = document.getElementById('tooltip');
 
 function handleStateHover(event, d) {
-  const stateName = this.dataset.state;
-  const info = DATA.state_summary[stateName];
+  var stateName = this.dataset.state;
+  var tc = TRUE_BRANCH_COUNTS[stateName] || {0:0,1:0,2:0,3:0};
+  var info = DATA.state_summary[stateName];
   if (!info) return;
 
-  const counts = getFilteredStateCounts();
-  const total = counts[stateName] || 0;
+  var poonaCount = tc[3] || 0;
 
-  // Build tooltip
-  let nbfcRows = '';
-  const nbfcTotal = Object.values(info.n || {}).reduce((a,b) => a+b, 0);
-  DATA.meta.nbfcs.forEach((name, i) => {
-    if (!activeNBFCs.has(i)) return;
-    const cnt = info.n[String(i)] || 0;
+  // Competitor rows — true branch counts, respecting pills
+  var compDefs = [
+    [0, 'Bajaj (Main)', NBFC_COLORS_HEX[0]],
+    [1, 'Shriram',      NBFC_COLORS_HEX[1]],
+    [2, 'L&T',          NBFC_COLORS_HEX[2]]
+  ];
+  var maxComp = Math.max(1, poonaCount,
+    ...compDefs.map(function(c){ return activeNBFCs.has(c[0]) ? (tc[c[0]]||0) : 0; })
+  );
+
+  var compRows = '';
+  compDefs.forEach(function(c) {
+    if (!activeNBFCs.has(c[0])) return;
+    var cnt = tc[c[0]] || 0;
     if (!cnt) return;
-    const pct = nbfcTotal > 0 ? Math.round(100 * cnt / nbfcTotal) : 0;
-    nbfcRows += `<div class="tooltip-row">
-      <span class="tooltip-label"><span class="nbfc-dot" style="background:${NBFC_COLORS_HEX[i]}"></span>${name}</span>
-      <span class="tooltip-val">${cnt.toLocaleString('en-IN')}</span>
-    </div>`;
+    compRows += '<div class="tooltip-row">'
+      + '<span class="tooltip-label"><span class="nbfc-dot" style="background:' + c[2] + '"></span>' + c[1] + '</span>'
+      + '<span class="tooltip-val">' + cnt.toLocaleString('en-IN') + '</span>'
+      + '</div>';
   });
 
-  // Mini stacked bar
-  let barSegs = '';
-  DATA.meta.nbfcs.forEach((name, i) => {
-    if (!activeNBFCs.has(i)) return;
-    const cnt = info.n[String(i)] || 0;
-    const pct = total > 0 ? (cnt / total) * 100 : 0;
+  // Mini bar: Poonawalla vs competitors (true branch scale)
+  var totalTrue = [0,1,2,3].reduce(function(a,i){
+    return a + (activeNBFCs.has(i) ? (tc[i]||0) : 0);
+  }, 0);
+  var barSegs = '';
+  [[3,NBFC_COLORS_HEX[3]],[0,NBFC_COLORS_HEX[0]],[1,NBFC_COLORS_HEX[1]],[2,NBFC_COLORS_HEX[2]]].forEach(function(pair) {
+    if (!activeNBFCs.has(pair[0])) return;
+    var cnt = tc[pair[0]] || 0;
+    var pct = totalTrue > 0 ? (cnt / totalTrue) * 100 : 0;
     if (pct < 0.5) return;
-    barSegs += `<div class="tt-bar-seg" style="width:${pct}%;background:${NBFC_COLORS_HEX[i]}"></div>`;
+    barSegs += '<div class="tt-bar-seg" style="width:' + pct + '%;background:' + pair[1] + '"></div>';
   });
 
-  tooltip.innerHTML = `
-    <div class="tooltip-title">${stateName}</div>
-    <div class="tooltip-row">
-      <span class="tooltip-label">Total Branches</span>
-      <span class="tooltip-val" style="color:var(--text-gold-lt)">${total.toLocaleString('en-IN')}</span>
-    </div>
-    ${nbfcRows}
-    ${info.c ? `<div class="tooltip-row"><span class="tooltip-label">Top City</span><span class="tooltip-val">${info.c}</span></div>` : ''}
-    <div class="tt-bar-track">${barSegs}</div>
-  `;
+  tooltip.innerHTML = '<div class="tooltip-title">' + stateName + '</div>'
+    + '<div class="tooltip-row">'
+    + '<span class="tooltip-label"><span class="nbfc-dot" style="background:#A78BFA"></span>Poonawalla</span>'
+    + '<span class="tooltip-val" style="color:#A78BFA;font-weight:700">' + poonaCount.toLocaleString('en-IN') + '</span>'
+    + '</div>'
+    + compRows
+    + (info.c ? '<div class="tooltip-row"><span class="tooltip-label">Top City</span><span class="tooltip-val">' + info.c + '</span></div>' : '')
+    + '<div class="tt-bar-track">' + barSegs + '</div>';
+
   tooltip.classList.add('visible');
   d3.select(this).attr('stroke', 'var(--text-gold)').attr('stroke-width', 1.5);
 }
