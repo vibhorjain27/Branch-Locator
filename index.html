@@ -3268,13 +3268,16 @@ function updatePanelStats() {
   topContainer.innerHTML = '';
   topStates.forEach(function(entry, rank) {
     var state=entry[0], cnt=entry[1], pct=Math.round(100*cnt/maxTop);
-    topContainer.innerHTML += '<div class="nbfc-bar-row" style="cursor:pointer;margin-bottom:8px"'
-      +' onclick="handleStateClick.call({dataset:{state:''+state+''}}, event)">'
-      +'<div style="width:16px;font-size:10px;color:var(--text-muted);font-family:var(--font-mono);text-align:right;flex-shrink:0">'+(rank+1)+'</div>'
+    var div = document.createElement('div');
+    div.className = 'nbfc-bar-row';
+    div.style.cssText = 'cursor:pointer;margin-bottom:8px';
+    div.addEventListener('click', (function(s){ return function(){ drillDownState(s); }; })(state));
+    div.innerHTML = '<div style="width:16px;font-size:10px;color:var(--text-muted);font-family:var(--font-mono);text-align:right;flex-shrink:0">'+(rank+1)+'</div>'
       +'<div class="nbfc-bar-label" style="margin-left:6px;font-size:11px;color:var(--text-secondary)">'+state+'</div>'
       +'<div class="nbfc-bar-track"><div class="nbfc-bar-fill" style="width:'+pct+'%;background:'+DATA.meta.nbfc_colors[3]+'"></div></div>'
-      +'<div class="nbfc-bar-count">'+cnt.toLocaleString('en-IN')+'</div></div>';
-  });
+      +'<div class="nbfc-bar-count">'+cnt.toLocaleString('en-IN')+'</div>';
+    topContainer.appendChild(div);
+  }));
   if (selectedState && DATA.state_summary[selectedState]) showStateInfo(selectedState);
 }
 
