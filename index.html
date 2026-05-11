@@ -4331,65 +4331,68 @@ function renderStateCharts(stateName) {
   });
   var grandTotal = nbfcTotals.reduce(function(a,b){return a+b;},0);
 
+  /* ── Donut ─────────────────────────────────────────────── */
   var R=52, CX=62, CY=62, strokeW=22;
-  var circumference = 2*Math.PI*R;
+  var circ = 2*Math.PI*R;
   var offset=0, slices='', legendItems='';
   DATA.meta.nbfcs.forEach(function(name, i) {
     if (!activeMapNBFCs.has(i)) return;
-    var cnt = nbfcTotals[i]; if (!cnt) return;
-    var pct  = cnt/grandTotal;
-    var dash = pct*circumference, gap=circumference-dash;
-    var color= DATA.meta.nbfc_colors[i];
+    var cnt=nbfcTotals[i]; if (!cnt) return;
+    var pct=cnt/grandTotal, dash=pct*circ, gap=circ-dash;
+    var color=DATA.meta.nbfc_colors[i];
     slices += '<circle cx="'+CX+'" cy="'+CY+'" r="'+R+'" fill="none" stroke="'+color
       +'" stroke-width="'+strokeW+'" stroke-dasharray="'+dash.toFixed(2)+' '+gap.toFixed(2)
       +'" stroke-dashoffset="'+(-offset).toFixed(2)+'" style="transition:stroke-dashoffset .5s ease" opacity="0.9"/>';
     offset += dash;
-    var pctStr = Math.round(100*pct)+'%';
-    var shortName = name.replace(' Finance','').replace(' Fincorp','');
+    var short = name.replace(' Finance','').replace(' Fincorp','');
     legendItems += '<div class="donut-legend-item">'
       +'<div class="donut-legend-name"><span class="nbfc-dot" style="background:'+color
-      +';width:8px;height:8px;border-radius:50%;display:inline-block"></span><span>'+shortName+'</span></div>'
+      +';width:8px;height:8px;border-radius:50%;display:inline-block"></span><span>'+short+'</span></div>'
       +'<div><span class="donut-legend-val">'+cnt.toLocaleString('en-IN')+'</span>'
-      +'<span class="donut-legend-pct">'+pctStr+'</span></div></div>';
+      +'<span class="donut-legend-pct">'+Math.round(100*pct)+'%</span></div></div>';
   });
 
-  var maxIdx=0, maxVal=0;
-  nbfcTotals.forEach(function(v,i){if(v>maxVal){maxVal=v;maxIdx=i;}});
   var donutSVG = '<svg class="donut" width="124" height="124" viewBox="0 0 124 124">'
     +'<circle cx="'+CX+'" cy="'+CY+'" r="'+R+'" fill="none" stroke="var(--bg-raised)" stroke-width="'+strokeW+'"/>'
     +slices
-    +'<text x="'+CX+'" y="'+(CY-6)+'" text-anchor="middle" fill="var(--text-primary)" style="font-family:var(--font-display);font-size:18px">'+grandTotal.toLocaleString('en-IN')+'</text>'
-    +'<text x="'+CX+'" y="'+(CY+10)+'" text-anchor="middle" fill="var(--text-muted)" style="font-family:var(--font-ui);font-size:8px;letter-spacing:.08em">BRANCHES</text>'
-    +'</svg>';
+    +'<text x="'+CX+'" y="'+(CY-6)+'" text-anchor="middle" fill="var(--text-primary)" '
+    +'style="font-family:var(--font-display);font-size:18px">'+grandTotal.toLocaleString('en-IN')+'</text>'
+    +'<text x="'+CX+'" y="'+(CY+10)+'" text-anchor="middle" fill="var(--text-muted)" '
+    +'style="font-family:var(--font-ui);font-size:8px;letter-spacing:.08em">BRANCHES</text></svg>';
 
-  var maxCity = stCities[0] ? stCities[0].t : 1;
-  var cityBars = '';
-  stCities.slice(0,12).forEach(function(city) {
-    var segs='';
-    DATA.meta.nbfcs.forEach(function(_, i) {
-      if (!activeMapNBFCs.has(i)) return;
-      var cnt = city.n[String(i)]||0; if(!cnt) return;
-      var w = (cnt/(maxCity||1))*100;
-      segs += '<div class="city-bar-seg" style="width:'+w.toFixed(1)+'%;background:'+DATA.meta.nbfc_colors[i]+'"></div>';
-    });
-    var cityDiv = document.createElement('div');
-    cityDiv.className = 'city-bar';
-    cityDiv.dataset.city = city.c;
-    cityDiv.addEventListener('click', (function(c){ return function(){ filterMapToCity(c); }; })(city.c));
-    cityDiv.innerHTML = '<div class="city-bar-label">'+city.c+'</div>'
-      +'<div class="city-bar-track">'+segs+'</div>'
-      +'<div class="city-bar-count">'+city.t.toLocaleString('en-IN')+'</div>';
-    cityBars += cityDiv.outerHTML;
-  });
-
-  panel.innerHTML = '<div style="margin-bottom:16px">'
+  /* ── Set static panel HTML ──────────────────────────────── */
+  panel.innerHTML =
+    '<div style="margin-bottom:16px">'
     +'<div class="panel-section-title" style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px">NBFC Share</div>'
     +'<div class="donut-row">'+donutSVG+'<div class="donut-legend">'+legendItems+'</div></div>'
     +'</div>'
-    +'<div style="border-top:1px solid var(--border-dim);padding-top:14px;margin-top:4px">'
+    +'<div id="city-bars-section" style="border-top:1px solid var(--border-dim);padding-top:14px;margin-top:4px">'
     +'<div class="panel-section-title" style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px">'
     +'Top Cities <span style="font-weight:400;color:var(--text-muted);font-family:var(--font-mono);font-size:9px">(click to filter map)</span></div>'
-    +cityBars+'</div>';
+    +'</div>';
+
+  /* ── Append city divs with live event listeners ──────────── */
+  var citySection = document.getElementById('city-bars-section');
+  var maxCity = stCities[0] ? stCities[0].t : 1;
+
+  stCities.slice(0,12).forEach(function(city) {
+    var segs = '';
+    DATA.meta.nbfcs.forEach(function(_, i) {
+      if (!activeMapNBFCs.has(i)) return;
+      var cnt = city.n[String(i)]||0; if (!cnt) return;
+      var w = (cnt/(maxCity||1))*100;
+      segs += '<div class="city-bar-seg" style="width:'+w.toFixed(1)+'%;background:'+DATA.meta.nbfc_colors[i]+'"></div>';
+    });
+
+    var div = document.createElement('div');
+    div.className = 'city-bar';
+    div.dataset.city = city.c;
+    div.innerHTML = '<div class="city-bar-label">'+city.c+'</div>'
+      +'<div class="city-bar-track">'+segs+'</div>'
+      +'<div class="city-bar-count">'+city.t.toLocaleString('en-IN')+'</div>';
+    div.addEventListener('click', (function(c){ return function(){ filterMapToCity(c); }; })(city.c));
+    citySection.appendChild(div);
+  });
 }
 
 function renderStateDiveHeader(stateName) {
