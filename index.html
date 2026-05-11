@@ -2463,7 +2463,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
           <button class="metric-btn" data-metric="cities" onclick="setCompareMetric('cities',this)">City Coverage</button>
           <button class="metric-btn" data-metric="region" onclick="setCompareMetric('region',this)">Region Balance</button>
         </div>
-        <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);margin-left:auto">4 NBFCs · 34 States · 22,876 Branches</span>
+        <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);margin-left:auto">4 NBFCs · 34 States & UTs · 5,788 True Branches</span>
       </div>
 
       <div class="compare-body">
@@ -4548,45 +4548,71 @@ function initTab3() {
 
 /* ── Scorecards ─────────────────────────────────────────────── */
 function renderScorecards(stats) {
-  const container = document.getElementById('nbfc-scorecards');
-  const maxTotal = Math.max(...stats.map(s => s.total));
+  var container = document.getElementById('nbfc-scorecards');
+  var m = compareMetric || 'count';
 
-  container.innerHTML = stats.map(s => {
-    const color = DATA.meta.nbfc_colors[s.i];
-    const shortName = s.name.replace(' Finance','').replace(' Fincorp','');
-    const pct = Math.round(100 * s.total / maxTotal);
+  var primaryVals = stats.map(function(s) {
+    if (m === 'states')  return s.states.size;
+    if (m === 'cities')  return s.cities.size;
+    if (m === 'regions') return Math.max.apply(null, Object.values(s.regions).concat([0]));
+    return s.total;
+  });
+  var maxPrimary = Math.max.apply(null, primaryVals.concat([1]));
 
-    return `<div class="nbfc-scorecard">
-      <div class="sc-header">
-        <span class="sc-dot" style="background:${color}"></span>
-        <span class="sc-name">${shortName}</span>
-      </div>
-      <div class="sc-metric">
-        <div class="sc-metric-val" style="color:${color}">${s.total.toLocaleString('en-IN')}</div>
-        <div class="sc-metric-lbl">Branches</div>
-        <div class="progress-bar" style="margin-top:6px">
-          <div class="progress-fill" style="width:${pct}%;background:${color}"></div>
-        </div>
-      </div>
-      <div class="sc-metric" style="margin-top:8px">
-        <div style="display:flex;gap:12px">
-          <div>
-            <div class="sc-metric-val" style="font-size:16px">${s.states.size}</div>
-            <div class="sc-metric-lbl">States</div>
-          </div>
-          <div>
-            <div class="sc-metric-val" style="font-size:16px">${s.cities.size.toLocaleString('en-IN')}</div>
-            <div class="sc-metric-lbl">Cities</div>
-          </div>
-        </div>
-      </div>
-      <div class="sc-highlight" style="margin-top:8px;border-top:1px solid var(--border-dim);padding-top:8px">
-        Strongest: <strong>${s.topState.split(' ')[0]}</strong>
-        <span style="color:var(--text-muted)">(${s.topStateCount.toLocaleString('en-IN')})</span>
-      </div>
-      <div class="sc-highlight">
-        Top region: <strong>${s.strongestRegion}</strong></div>
-    </div>`;
+  container.innerHTML = stats.map(function(s, idx) {
+    var color = DATA.meta.nbfc_colors[s.i];
+    var short = s.name.replace(' Finance','').replace(' Fincorp','');
+    var pv    = primaryVals[idx];
+    var pct   = Math.round(100 * pv / maxPrimary);
+    var mainVal, mainLbl, sub1Val, sub1Lbl, sub2Val, sub2Lbl;
+
+    if (m === 'states') {
+      mainVal=s.states.size; mainLbl='States & UTs';
+      sub1Val=s.total.toLocaleString('en-IN'); sub1Lbl='Branches';
+      sub2Val=s.cities.size.toLocaleString('en-IN'); sub2Lbl='Cities';
+    } else if (m === 'cities') {
+      mainVal=s.cities.size.toLocaleString('en-IN'); mainLbl='Cities';
+      sub1Val=s.states.size; sub1Lbl='States & UTs';
+      sub2Val=s.total.toLocaleString('en-IN'); sub2Lbl='Branches';
+    } else if (m === 'regions') {
+      var topReg = Object.entries(s.regions).sort(function(a,b){return b[1]-a[1];})[0];
+      var allBr  = Object.values(s.regions).reduce(function(a,b){return a+b;},0);
+      var concPct= allBr>0 ? Math.round(100*topReg[1]/allBr) : 0;
+      mainVal=concPct+'%'; mainLbl='In Top Region';
+      sub1Val=topReg[0]; sub1Lbl='Top Region';
+      sub2Val=s.total.toLocaleString('en-IN'); sub2Lbl='Branches';
+    } else {
+      mainVal=s.total.toLocaleString('en-IN'); mainLbl='Branches';
+      sub1Val=s.states.size; sub1Lbl='States & UTs';
+      sub2Val=s.cities.size.toLocaleString('en-IN'); sub2Lbl='Cities';
+    }
+
+    return '<div class="nbfc-scorecard">'
+      +'<div class="sc-header">'
+      +'<span class="sc-dot" style="background:'+color+'"></span>'
+      +'<span class="sc-name">'+short+'</span>'
+      +'</div>'
+      +'<div class="sc-metric">'
+      +'<div class="sc-metric-val" style="color:'+color+'">'+mainVal+'</div>'
+      +'<div class="sc-metric-lbl">'+mainLbl+'</div>'
+      +'<div class="progress-bar" style="margin-top:6px">'
+      +'<div class="progress-fill" style="width:'+pct+'%;background:'+color+'"></div>'
+      +'</div>'
+      +'</div>'
+      +'<div class="sc-metric" style="margin-top:8px">'
+      +'<div style="display:flex;gap:12px">'
+      +'<div><div class="sc-metric-val" style="font-size:16px">'+sub1Val+'</div>'
+      +'<div class="sc-metric-lbl">'+sub1Lbl+'</div></div>'
+      +'<div><div class="sc-metric-val" style="font-size:16px">'+sub2Val+'</div>'
+      +'<div class="sc-metric-lbl">'+sub2Lbl+'</div></div>'
+      +'</div>'
+      +'</div>'
+      +'<div class="sc-highlight" style="margin-top:8px;border-top:1px solid var(--border-dim);padding-top:8px">'
+      +'Strongest: <strong>'+s.topState.split(' ')[0]+'</strong>'
+      +' <span style="color:var(--text-muted)">('+s.topStateCount.toLocaleString('en-IN')+')</span>'
+      +'</div>'
+      +'<div class="sc-highlight">Top region: <strong>'+s.strongestRegion+'</strong></div>'
+      +'</div>';
   }).join('');
 }
 
@@ -4689,45 +4715,45 @@ function renderRegionBreakdown(stats) {
 
 /* ── State comparison table ─────────────────────────────────── */
 function renderCompareStateTable() {
-  const tbody = document.getElementById('compare-state-tbody');
-  const states = Object.entries(DATA.state_summary).map(([state, info]) => {
-    const counts = DATA.meta.nbfcs.map((_, i) => info.n[String(i)] || 0);
-    const total = counts.reduce((a,b)=>a+b,0);
-    const domIdx = counts.indexOf(Math.max(...counts));
-    return { state, counts, total, domIdx };
+  var tbody = document.getElementById('compare-state-tbody');
+  var states = Object.keys(DATA.state_summary).map(function(state) {
+    var tc = TRUE_BRANCH_COUNTS[state] || {0:0,1:0,2:0,3:0};
+    var counts = DATA.meta.nbfcs.map(function(_, i){ return tc[i]||0; });
+    var total  = counts.reduce(function(a,b){return a+b;},0);
+    var domIdx = 0, domMax = 0;
+    counts.forEach(function(c,i){ if(c>domMax){domMax=c;domIdx=i;} });
+    return {state:state, counts:counts, total:total, domIdx:domIdx};
   });
 
-  // Sort
-  states.sort((a, b) => {
-    let va, vb;
-    if (compareSortCol === 'state') { va = a.state; vb = b.state; return compareSortDir * va.localeCompare(vb); }
-    if (compareSortCol === 'total') { va = a.total; vb = b.total; }
+  states.sort(function(a,b) {
+    var va, vb;
+    if (compareSortCol === 'state') { return compareSortDir * a.state.localeCompare(b.state); }
+    if (compareSortCol === 'total') { va=a.total; vb=b.total; }
     else {
-      const idx = ['bajaj','shriram','lt','poonawalla'].indexOf(compareSortCol);
-      va = a.counts[idx]; vb = b.counts[idx];
+      var idx = ['bajaj','shriram','lt','poonawalla'].indexOf(compareSortCol);
+      va = idx>=0 ? a.counts[idx] : a.total;
+      vb = idx>=0 ? b.counts[idx] : b.total;
     }
     return compareSortDir * (va - vb);
   });
 
-  const maxTotal = Math.max(...states.map(s => s.total));
-
-  tbody.innerHTML = states.map(({state, counts, total, domIdx}) => {
-    const color = DATA.meta.nbfc_colors[domIdx];
-    const shortNBFC = DATA.meta.nbfcs[domIdx].replace(' Finance','').replace(' Fincorp','');
-    const cells = counts.map((cnt, i) => {
-      const pct = total > 0 ? (cnt/total)*100 : 0;
-      return `<td class="heat-cell" style="position:relative">
-        <div class="heat-bg" style="width:${pct.toFixed(0)}%;background:${DATA.meta.nbfc_colors[i]}"></div>
-        <span style="position:relative">${cnt ? cnt.toLocaleString('en-IN') : '—'}</span>
-      </td>`;
+  var maxTotal = Math.max.apply(null, states.map(function(s){return s.total;}).concat([1]));
+  tbody.innerHTML = states.map(function(row) {
+    var color = DATA.meta.nbfc_colors[row.domIdx];
+    var shortNBFC = DATA.meta.nbfcs[row.domIdx].replace(' Finance','').replace(' Fincorp','');
+    var cells = row.counts.map(function(cnt, i) {
+      var pct = row.total > 0 ? (cnt/row.total)*100 : 0;
+      return '<td class="heat-cell" style="position:relative">'
+        +'<div class="heat-bg" style="width:'+pct.toFixed(0)+'%;background:'+DATA.meta.nbfc_colors[i]+'"></div>'
+        +'<span style="position:relative">'+(cnt ? cnt.toLocaleString('en-IN') : '&mdash;')+'</span>'
+        +'</td>';
     }).join('');
-
-    return `<tr>
-      <td style="padding-left:18px">${state}</td>
-      ${cells}
-      <td>${total.toLocaleString('en-IN')}</td>
-      <td><span class="dom-badge" style="background:${color}22;color:${color}">${shortNBFC}</span></td>
-    </tr>`;
+    return '<tr>'
+      +'<td style="padding-left:18px">'+row.state+'</td>'
+      +cells
+      +'<td>'+row.total.toLocaleString('en-IN')+'</td>'
+      +'<td><span class="dom-badge" style="background:'+color+'22;color:'+color+'">'+shortNBFC+'</span></td>'
+      +'</tr>';
   }).join('');
 }
 
@@ -4739,11 +4765,15 @@ function sortCompareTable(col) {
 
 function setCompareMetric(metric, btn) {
   compareMetric = metric;
-  document.querySelectorAll('.metric-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.metric-btn').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
-  // Re-render scorecards with new metric emphasis
-  const stats = buildNBFCStats();
+  var stats = buildNBFCStats();
   renderScorecards(stats);
+  renderRadarChart(stats);
+  renderRegionBreakdown(stats);
+  if (metric === 'states') { compareSortCol = 'state'; compareSortDir = 1; }
+  else { compareSortCol = 'total'; compareSortDir = -1; }
+  renderCompareStateTable();
 }
 
 /* ═══════════════════════════════════════════════════════════════
