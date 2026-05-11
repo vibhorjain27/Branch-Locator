@@ -3000,6 +3000,13 @@ async function buildIndiaMap() {
   buildLegend();
 }
 
+function isTrueBranch(b) {
+  return (b.n === 0 && b.ot === 6)
+      || (b.n === 1)
+      || (b.n === 2 && b.ot === 0)
+      || (b.n === 3);
+}
+
 function buildTrueBranchIndexes() {
   TRUE_BRANCH_COUNTS = {};
   POONA_STATE_COUNTS = {};
@@ -3520,38 +3527,39 @@ document.querySelector('[data-tab="playbook"]').addEventListener('click', functi
 
 // Specialisation-based competitive category per state
 function buildCompetitiveMap() {
-  const nbfcTotal = DATA.meta.nbfcs.map((_, i) =>
-    DATA.branches.filter(b => b.n === i).length
-  );
-  const grandTotal = DATA.branches.length;
+  var nbfcTotal = DATA.meta.nbfcs.map(function(_, i) {
+    return Object.values(TRUE_BRANCH_COUNTS).reduce(function(sum, tc){ return sum+(tc[i]||0); }, 0);
+  });
+  var grandTotal = nbfcTotal.reduce(function(a,b){return a+b;},0);
 
-  const compMap = {};
-  Object.entries(DATA.state_summary).forEach(([state, info]) => {
-    const stTotal = Object.values(info.n).reduce((a,b) => a+b, 0);
-    const spec = {};
-    DATA.meta.nbfcs.forEach((name, i) => {
-      const cnt = info.n[String(i)] || 0;
-      if (!cnt) return;
-      const stShare = cnt / stTotal;
-      const natShare = nbfcTotal[i] / grandTotal;
-      spec[i] = stShare / natShare;
+  var compMap = {};
+  Object.keys(DATA.state_summary).forEach(function(state) {
+    var tc = TRUE_BRANCH_COUNTS[state]||{};
+    var stTotal = Object.values(tc).reduce(function(a,b){return a+b;},0);
+    if (!stTotal) { compMap[state]={cat:'No Data',domIdx:0,total:0}; return; }
+
+    var spec={};
+    DATA.meta.nbfcs.forEach(function(_, i) {
+      var cnt = tc[i]||0; if (!cnt) return;
+      var stShare  = cnt/stTotal;
+      var natShare = nbfcTotal[i]/grandTotal;
+      if (natShare>0) spec[i] = stShare/natShare;
     });
 
-    const entries = Object.entries(spec).sort((a,b) => b[1]-a[1]);
-    if (!entries.length) { compMap[state] = { cat: 'No Data', domIdx: 0, total: stTotal }; return; }
+    var entries = Object.entries(spec).sort(function(a,b){return b[1]-a[1];});
+    if (!entries.length){compMap[state]={cat:'No Data',domIdx:0,total:stTotal};return;}
 
-    const [domIdx, domSpec] = entries[0];
-    const domPct = (info.n[domIdx] || 0) / stTotal;
-    const nNBFCs = Object.keys(info.n).length;
-    let cat;
+    var domIdx=parseInt(entries[0][0]), domSpec=entries[0][1];
+    var domPct = (tc[domIdx]||0)/stTotal;
+    var nNBFCs = Object.keys(tc).filter(function(k){return tc[k]>0;}).length;
+    var cat;
+    if (stTotal<15) cat='Underserved';
+    else if (nNBFCs===1) cat='Single NBFC';
+    else if (domSpec>2.5 && domPct>0.35) cat=DATA.meta.nbfcs[domIdx].split(' ')[0]+' Stronghold';
+    else if (domSpec>1.5) cat=DATA.meta.nbfcs[domIdx].split(' ')[0]+' Leading';
+    else cat='Contested';
 
-    if (stTotal < 30) cat = 'Underserved';
-    else if (nNBFCs === 1) cat = 'Single NBFC';
-    else if (domSpec > 2.5 && domPct > 0.35) cat = `${DATA.meta.nbfcs[domIdx].split(' ')[0]} Stronghold`;
-    else if (domSpec > 1.5) cat = `${DATA.meta.nbfcs[domIdx].split(' ')[0]} Leading`;
-    else cat = 'Contested';
-
-    compMap[state] = { cat, domIdx: parseInt(domIdx), spec: domSpec, total: stTotal, domPct: Math.round(domPct*100), nNBFCs };
+    compMap[state]={cat:cat,domIdx:domIdx,spec:domSpec,total:stTotal,domPct:Math.round(domPct*100),nNBFCs:nNBFCs};
   });
   return compMap;
 }
@@ -3650,46 +3658,37 @@ function renderCompLegend(compMap) {
 
 /* ── Concentration risk ─────────────────────────────────────── */
 function renderConcentrationRisk() {
-  const container = document.getElementById('conc-grid');
-  const stateCounts = {};
-  Object.entries(DATA.state_summary).forEach(([state, info]) => {
-    DATA.meta.nbfcs.forEach((_, i) => {
-      if (!stateCounts[i]) stateCounts[i] = {};
-      stateCounts[i][state] = info.n[String(i)] || 0;
+  var container = document.getElementById('conc-grid');
+  var stateCounts = {};
+  DATA.meta.nbfcs.forEach(function(_, i){ stateCounts[i]={}; });
+  Object.entries(TRUE_BRANCH_COUNTS).forEach(function(e) {
+    var state=e[0], tc=e[1];
+    DATA.meta.nbfcs.forEach(function(_, i){
+      stateCounts[i][state] = tc[i]||0;
     });
   });
 
-  container.innerHTML = DATA.meta.nbfcs.map((name, i) => {
-    const color = DATA.meta.nbfc_colors[i];
-    const total = Object.values(stateCounts[i]).reduce((a,b)=>a+b,0);
-    const top3 = Object.entries(stateCounts[i])
-      .sort((a,b) => b[1]-a[1]).slice(0,3);
-    const top3total = top3.reduce((a,[,v])=>a+v,0);
-    const pct = total > 0 ? Math.round(100*top3total/total) : 0;
-    const shortName = name.replace(' Finance','').replace(' Fincorp','');
-
-    const stateRows = top3.map(([state, cnt]) => {
-      const spct = total > 0 ? (cnt/total)*100 : 0;
-      return `<div class="conc-state-row">
-        <span class="conc-state-name">${state.split(' ')[0]}</span>
-        <span class="conc-state-val">${cnt.toLocaleString('en-IN')}</span>
-      </div>
-      <div class="conc-state-bar">
-        <div class="conc-state-bar-fill" style="width:${spct.toFixed(1)}%;background:${color}"></div>
-      </div>`;
+  container.innerHTML = DATA.meta.nbfcs.map(function(name, i) {
+    var color = DATA.meta.nbfc_colors[i];
+    var total = Object.values(stateCounts[i]).reduce(function(a,b){return a+b;},0);
+    var top3  = Object.entries(stateCounts[i]).sort(function(a,b){return b[1]-a[1];}).slice(0,3);
+    var top3total = top3.reduce(function(a,e){return a+e[1];},0);
+    var pct   = total>0 ? Math.round(100*top3total/total) : 0;
+    var short = name.replace(' Finance','').replace(' Fincorp','');
+    var stateRows = top3.map(function(e) {
+      var state=e[0], cnt=e[1];
+      var spct = total>0 ? (cnt/total)*100 : 0;
+      return '<div class="conc-state-row"><span class="conc-state-name">'+state.split(' ')[0]+'</span>'
+        +'<span class="conc-state-val">'+cnt.toLocaleString('en-IN')+'</span></div>'
+        +'<div class="conc-state-bar"><div class="conc-state-bar-fill" style="width:'+spct.toFixed(1)+'%;background:'+color+'"></div></div>';
     }).join('');
-
-    return `<div class="conc-card">
-      <div class="conc-card-header">
-        <span class="nbfc-dot" style="background:${color};width:8px;height:8px;border-radius:50%;display:inline-block"></span>
-        <span class="conc-card-name">${shortName}</span>
-      </div>
-      <div class="conc-pct" style="color:${color}">${pct}%</div>
-      <div class="conc-label">in top 3 states</div>
-      <div class="conc-states" style="margin-top:10px;border-top:1px solid var(--border-dim);padding-top:8px">
-        ${stateRows}
-      </div>
-    </div>`;
+    return '<div class="conc-card">'
+      +'<div class="conc-card-header"><span class="nbfc-dot" style="background:'+color+';width:8px;height:8px;border-radius:50%;display:inline-block"></span>'
+      +'<span class="conc-card-name">'+short+'</span></div>'
+      +'<div class="conc-pct" style="color:'+color+'">'+pct+'%</div>'
+      +'<div class="conc-label">in top 3 states</div>'
+      +'<div class="conc-states" style="margin-top:10px;border-top:1px solid var(--border-dim);padding-top:8px">'+stateRows+'</div>'
+      +'</div>';
   }).join('');
 }
 
@@ -3781,35 +3780,37 @@ const STATE_POP_M = {
 };
 
 function renderGapAnalysis() {
-  const container = document.getElementById('gap-analysis-bars');
-  const counts = {};
-  Object.entries(DATA.state_summary).forEach(([state, info]) => {
-    counts[state] = Object.values(info.n).reduce((a,b)=>a+b,0);
+  var container = document.getElementById('gap-analysis-bars');
+  var counts = {};
+  Object.entries(TRUE_BRANCH_COUNTS).forEach(function(e) {
+    counts[e[0]] = Object.values(e[1]).reduce(function(a,b){return a+b;},0);
+  });
+  Object.keys(DATA.state_summary).forEach(function(s){
+    if (!counts[s]) counts[s]=0;
   });
 
-  // Density = branches per million population
-  const density = Object.entries(counts).map(([state, cnt]) => {
-    const pop = STATE_POP_M[state] || 5;
-    return { state, cnt, density: cnt / pop, pop };
-  }).sort((a,b) => a.density - b.density); // lowest first = most underserved
+  var density = Object.entries(counts).map(function(e) {
+    var state=e[0], cnt=e[1];
+    var pop = STATE_POP_M[state]||5;
+    return {state:state, cnt:cnt, density:cnt/pop};
+  }).sort(function(a,b){return a.density-b.density});
 
-  const maxDensity = Math.max(...density.map(d => d.density));
-  const bottom15 = density.slice(0, 15);
+  var maxDensity = Math.max.apply(null, density.map(function(d){return d.density;}));
+  var bottom15 = density.slice(0,15);
 
-  container.innerHTML = bottom15.map(({ state, cnt, density: d }) => {
-    const pct = (d / maxDensity) * 100;
-    const info = DATA.state_summary[state];
-    let domIdx = 0, domMax = 0;
-    Object.entries(info.n).forEach(([idx, c]) => {
-      if (c > domMax) { domMax = c; domIdx = parseInt(idx); }
+  container.innerHTML = bottom15.map(function(d) {
+    var pct = (d.density/maxDensity)*100;
+    var tc  = TRUE_BRANCH_COUNTS[d.state]||{};
+    var domIdx=0, domMax=0;
+    Object.entries(tc).forEach(function(e){
+      if(e[1]>domMax){domMax=e[1];domIdx=parseInt(e[0]);}
     });
-    return `<div class="gap-bar-row">
-      <div class="gap-bar-label">${state.length > 16 ? state.split(' ')[0] + '…' : state}</div>
-      <div class="gap-bar-track">
-        <div class="gap-bar-fill" style="width:${pct.toFixed(1)}%;background:${DATA.meta.nbfc_colors[domIdx]}"></div>
-      </div>
-      <div class="gap-bar-val">${d.toFixed(1)}/M</div>
-    </div>`;
+    var lbl = d.state.length>16 ? d.state.split(' ')[0]+'...' : d.state;
+    return '<div class="gap-bar-row">'
+      +'<div class="gap-bar-label">'+lbl+'</div>'
+      +'<div class="gap-bar-track"><div class="gap-bar-fill" style="width:'+pct.toFixed(1)+'%;background:'+DATA.meta.nbfc_colors[domIdx]+'"></div></div>'
+      +'<div class="gap-bar-val">'+d.density.toFixed(1)+'/M</div>'
+      +'</div>';
   }).join('');
 }
 
@@ -3927,27 +3928,27 @@ function onExplorerStateChange() {
 
 /* ── Filter runner ──────────────────────────────────────────── */
 function runExplorerFilter() {
-  explorerFilters.state = document.getElementById('explorer-state-filter').value;
-  explorerFilters.city = document.getElementById('explorer-city-filter').value;
+  explorerFilters.state   = document.getElementById('explorer-state-filter').value;
+  explorerFilters.city    = document.getElementById('explorer-city-filter').value;
   explorerFilters.pincode = document.getElementById('explorer-pincode').value.trim();
   explorerFilters.geoOnly = document.getElementById('explorer-geo-only').checked;
 
-  const OT = DATA.meta.office_types;
-  explorerFiltered = DATA.branches.filter(b => {
+  var OT = DATA.meta.office_types;
+  explorerFiltered = DATA.branches.filter(function(b) {
+    if (!isTrueBranch(b)) return false;
     if (!explorerFilters.nbfcs.has(b.n)) return false;
     if (explorerFilters.state && b.st !== explorerFilters.state) return false;
-    if (explorerFilters.city && b.ci !== explorerFilters.city) return false;
+    if (explorerFilters.city  && b.ci !== explorerFilters.city)  return false;
     if (explorerFilters.pincode && !(b.p||'').startsWith(explorerFilters.pincode)) return false;
-    if (explorerFilters.geoOnly && (b.la == null)) return false;
-    const ot = b.ot !== undefined ? OT[b.ot] : null;
-    if (explorerFilters.types.size > 0 && ot && explorerFilters.types.has(ot)) return false;
+    if (explorerFilters.geoOnly && b.la == null) return false;
+    var ot = b.ot !== undefined ? OT[b.ot] : null;
+    if (explorerFilters.types.size>0 && ot && explorerFilters.types.has(ot)) return false;
     return true;
   });
 
-  const total = explorerFiltered.length;
-  document.getElementById('explorer-count').textContent = `${total.toLocaleString('en-IN')} branches`;
-  document.getElementById('explorer-table-count').textContent = `${Math.min(total,500)} of ${total.toLocaleString('en-IN')} shown`;
-
+  var total = explorerFiltered.length;
+  document.getElementById('explorer-count').textContent = total.toLocaleString('en-IN')+' branches';
+  document.getElementById('explorer-table-count').textContent = Math.min(total,500)+' of '+total.toLocaleString('en-IN')+' shown';
   updateExplorerMap();
   renderExplorerTable();
 }
@@ -4100,7 +4101,9 @@ const REGION_MAP = {
 };
 
 function getStateBranches(stateName) {
-  return DATA.branches.filter(b => b.st === stateName);
+  return DATA.branches.filter(function(b) {
+    return b.st === stateName && isTrueBranch(b);
+  });
 }
 
 function getBranchOfficeType(b) {
@@ -4318,111 +4321,87 @@ function drawerField(label, value) {
 
 /* ── State charts (donut + city bars) ───────────────────────── */
 function renderStateCharts(stateName) {
-  const info = DATA.state_summary[stateName];
-  const stCities = DATA.state_cities[stateName] || [];
-  const panel = document.getElementById('state-chart-panel');
+  var info    = DATA.state_summary[stateName];
+  var stCities= DATA.state_cities[stateName] || [];
+  var panel   = document.getElementById('state-chart-panel');
+  var tc      = TRUE_BRANCH_COUNTS[stateName] || {0:0,1:0,2:0,3:0};
 
-  // Respect activeMapNBFCs — only show selected NBFCs in donut + cities
-  const nbfcTotals = DATA.meta.nbfcs.map((_, i) =>
-    activeMapNBFCs.has(i) ? (info.n[String(i)] || 0) : 0
-  );
-  const grandTotal = nbfcTotals.reduce((a,b) => a+b, 0);
+  var nbfcTotals = DATA.meta.nbfcs.map(function(_, i) {
+    return activeMapNBFCs.has(i) ? (tc[i]||0) : 0;
+  });
+  var grandTotal = nbfcTotals.reduce(function(a,b){return a+b;},0);
 
-  // Build donut SVG
-  const R = 52, CX = 62, CY = 62, strokeW = 22;
-  const circumference = 2 * Math.PI * R;
-  let offset = 0;
-  let slices = '';
-  let legendItems = '';
-  DATA.meta.nbfcs.forEach((name, i) => {
+  var R=52, CX=62, CY=62, strokeW=22;
+  var circumference = 2*Math.PI*R;
+  var offset=0, slices='', legendItems='';
+  DATA.meta.nbfcs.forEach(function(name, i) {
     if (!activeMapNBFCs.has(i)) return;
-    const cnt = nbfcTotals[i];
-    if (!cnt) return;
-    const pct = cnt / grandTotal;
-    const dash = pct * circumference;
-    const gap = circumference - dash;
-    const color = DATA.meta.nbfc_colors[i];
-    slices += `<circle cx="${CX}" cy="${CY}" r="${R}"
-      fill="none" stroke="${color}" stroke-width="${strokeW}"
-      stroke-dasharray="${dash.toFixed(2)} ${gap.toFixed(2)}"
-      stroke-dashoffset="${-offset.toFixed(2)}"
-      style="transition:stroke-dashoffset .5s ease"
-      opacity="0.9"/>`;
+    var cnt = nbfcTotals[i]; if (!cnt) return;
+    var pct  = cnt/grandTotal;
+    var dash = pct*circumference, gap=circumference-dash;
+    var color= DATA.meta.nbfc_colors[i];
+    slices += '<circle cx="'+CX+'" cy="'+CY+'" r="'+R+'" fill="none" stroke="'+color
+      +'" stroke-width="'+strokeW+'" stroke-dasharray="'+dash.toFixed(2)+' '+gap.toFixed(2)
+      +'" stroke-dashoffset="'+(-offset).toFixed(2)+'" style="transition:stroke-dashoffset .5s ease" opacity="0.9"/>';
     offset += dash;
-    const pctStr = Math.round(100*pct) + '%';
-    legendItems += `
-      <div class="donut-legend-item">
-        <div class="donut-legend-name">
-          <span class="nbfc-dot" style="background:${color};width:8px;height:8px;border-radius:50%;display:inline-block"></span>
-          <span>${name.replace(' Finance','').replace(' Fincorp','')}</span>
-        </div>
-        <div>
-          <span class="donut-legend-val">${cnt.toLocaleString('en-IN')}</span>
-          <span class="donut-legend-pct">${pctStr}</span>
-        </div>
-      </div>`;
+    var pctStr = Math.round(100*pct)+'%';
+    var shortName = name.replace(' Finance','').replace(' Fincorp','');
+    legendItems += '<div class="donut-legend-item">'
+      +'<div class="donut-legend-name"><span class="nbfc-dot" style="background:'+color
+      +';width:8px;height:8px;border-radius:50%;display:inline-block"></span><span>'+shortName+'</span></div>'
+      +'<div><span class="donut-legend-val">'+cnt.toLocaleString('en-IN')+'</span>'
+      +'<span class="donut-legend-pct">'+pctStr+'</span></div></div>';
   });
 
-  // Center text
-  const topNBFC = DATA.meta.nbfcs[nbfcTotals.indexOf(Math.max(...nbfcTotals))];
-  const donutSVG = `
-    <svg class="donut" width="124" height="124" viewBox="0 0 124 124">
-      <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="var(--bg-raised)" stroke-width="${strokeW}"/>
-      ${slices}
-      <text x="${CX}" y="${CY-6}" text-anchor="middle" fill="var(--text-primary)"
-        style="font-family:var(--font-display);font-size:18px">${grandTotal.toLocaleString('en-IN')}</text>
-      <text x="${CX}" y="${CY+10}" text-anchor="middle" fill="var(--text-muted)"
-        style="font-family:var(--font-ui);font-size:8px;letter-spacing:.08em">BRANCHES</text>
-    </svg>`;
+  var maxIdx=0, maxVal=0;
+  nbfcTotals.forEach(function(v,i){if(v>maxVal){maxVal=v;maxIdx=i;}});
+  var donutSVG = '<svg class="donut" width="124" height="124" viewBox="0 0 124 124">'
+    +'<circle cx="'+CX+'" cy="'+CY+'" r="'+R+'" fill="none" stroke="var(--bg-raised)" stroke-width="'+strokeW+'"/>'
+    +slices
+    +'<text x="'+CX+'" y="'+(CY-6)+'" text-anchor="middle" fill="var(--text-primary)" style="font-family:var(--font-display);font-size:18px">'+grandTotal.toLocaleString('en-IN')+'</text>'
+    +'<text x="'+CX+'" y="'+(CY+10)+'" text-anchor="middle" fill="var(--text-muted)" style="font-family:var(--font-ui);font-size:8px;letter-spacing:.08em">BRANCHES</text>'
+    +'</svg>';
 
-  // City bars (top 12)
-  const maxCity = stCities[0]?.t || 1;
-  let cityBars = '';
-  stCities.slice(0, 12).forEach(city => {
-    let segs = '';
-    let cityTotal = 0;
-    DATA.meta.nbfcs.forEach((_, i) => {
+  var maxCity = stCities[0] ? stCities[0].t : 1;
+  var cityBars = '';
+  stCities.slice(0,12).forEach(function(city) {
+    var segs='';
+    DATA.meta.nbfcs.forEach(function(_, i) {
       if (!activeMapNBFCs.has(i)) return;
-      const cnt = city.n[String(i)] || 0;
-      cityTotal += cnt;
+      var cnt = city.n[String(i)]||0; if(!cnt) return;
+      var w = (cnt/(maxCity||1))*100;
+      segs += '<div class="city-bar-seg" style="width:'+w.toFixed(1)+'%;background:'+DATA.meta.nbfc_colors[i]+'"></div>';
     });
-    DATA.meta.nbfcs.forEach((_, i) => {
-      if (!activeMapNBFCs.has(i)) return;
-      const cnt = city.n[String(i)] || 0;
-      if (!cnt) return;
-      const w = (cnt / (maxCity || 1)) * 100;
-      segs += `<div class="city-bar-seg" style="width:${w.toFixed(1)}%;background:${DATA.meta.nbfc_colors[i]}"></div>`;
-    });
-    cityBars += `
-      <div class="city-bar" data-city="${city.c}" onclick="filterMapToCity('${city.c.replace(/'/g,"\\'")}')">
-        <div class="city-bar-label">${city.c}</div>
-        <div class="city-bar-track">${segs}</div>
-        <div class="city-bar-count">${city.t.toLocaleString('en-IN')}</div>
-      </div>`;
+    var cityDiv = document.createElement('div');
+    cityDiv.className = 'city-bar';
+    cityDiv.dataset.city = city.c;
+    cityDiv.addEventListener('click', (function(c){ return function(){ filterMapToCity(c); }; })(city.c));
+    cityDiv.innerHTML = '<div class="city-bar-label">'+city.c+'</div>'
+      +'<div class="city-bar-track">'+segs+'</div>'
+      +'<div class="city-bar-count">'+city.t.toLocaleString('en-IN')+'</div>';
+    cityBars += cityDiv.outerHTML;
   });
 
-  panel.innerHTML = `
-    <div style="margin-bottom:16px">
-      <div class="panel-section-title" style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px">NBFC Share</div>
-      <div class="donut-row">
-        ${donutSVG}
-        <div class="donut-legend">${legendItems}</div>
-      </div>
-    </div>
-    <div style="border-top:1px solid var(--border-dim);padding-top:14px;margin-top:4px">
-      <div class="panel-section-title" style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px">
-        Top Cities <span style="font-weight:400;color:var(--text-muted);font-family:var(--font-mono);font-size:9px">(click to filter map)</span>
-      </div>
-      ${cityBars}
-    </div>`;
+  panel.innerHTML = '<div style="margin-bottom:16px">'
+    +'<div class="panel-section-title" style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px">NBFC Share</div>'
+    +'<div class="donut-row">'+donutSVG+'<div class="donut-legend">'+legendItems+'</div></div>'
+    +'</div>'
+    +'<div style="border-top:1px solid var(--border-dim);padding-top:14px;margin-top:4px">'
+    +'<div class="panel-section-title" style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px">'
+    +'Top Cities <span style="font-weight:400;color:var(--text-muted);font-family:var(--font-mono);font-size:9px">(click to filter map)</span></div>'
+    +cityBars+'</div>';
 }
 
 function renderStateDiveHeader(stateName) {
-  const info = DATA.state_summary[stateName];
-  const activeNBFCCount = [...activeMapNBFCs].filter(i => (info.n[String(i)] || 0) > 0).length;
-  const total = [...activeMapNBFCs].reduce((sum, i) => sum + (info.n[String(i)] || 0), 0);
+  var tc = TRUE_BRANCH_COUNTS[stateName] || {0:0,1:0,2:0,3:0};
+  var total = 0, nbfcCount = 0;
+  [0,1,2,3].forEach(function(i) {
+    if (activeMapNBFCs.has(i) && (tc[i]||0) > 0) {
+      total += tc[i]; nbfcCount++;
+    }
+  });
   document.getElementById('state-dive-sub').textContent =
-    `${total.toLocaleString('en-IN')} branches · ${activeNBFCCount} NBFCs`;
+    total.toLocaleString('en-IN') + ' branches \u00b7 ' + nbfcCount + ' NBFCs';
 }
 
 function filterMapToCity(cityName) {
@@ -4520,44 +4499,36 @@ let compareSortDir = -1;
 
 // Pre-compute city sets and regional counts per NBFC
 function buildNBFCStats() {
-  const stats = DATA.meta.nbfcs.map((name, i) => ({
-    name, i,
-    total: 0,
-    states: new Set(),
-    cities: new Set(),
-    regions: {},
-    topState: '', topStateCount: 0,
-    strongestRegion: '',
-  }));
-
-  Object.entries(REGION_MAP).forEach(([region, regionStates]) => {
-    stats.forEach(s => { s.regions[region] = 0; });
+  var stats = DATA.meta.nbfcs.map(function(name, i) {
+    return { name:name, i:i, total:0, states:new Set(), cities:new Set(),
+             regions:{}, topState:'', topStateCount:0, strongestRegion:'' };
+  });
+  Object.keys(REGION_MAP).forEach(function(region) {
+    stats.forEach(function(s){ s.regions[region]=0; });
   });
 
-  DATA.branches.forEach(b => {
-    const s = stats[b.n];
+  DATA.branches.forEach(function(b) {
+    if (!isTrueBranch(b)) return;
+    var s = stats[b.n];
     s.total++;
     if (b.st) s.states.add(b.st);
-    if (b.ci && b.st) s.cities.add(b.ci + '|' + b.st);
-    // Region
-    for (const [region, rStates] of Object.entries(REGION_MAP)) {
-      if (rStates.includes(b.st)) { s.regions[region]++; break; }
+    if (b.ci && b.st) s.cities.add(b.ci+'|'+b.st);
+    var rKeys = Object.keys(REGION_MAP);
+    for (var ri=0; ri<rKeys.length; ri++) {
+      if (REGION_MAP[rKeys[ri]].indexOf(b.st) >= 0) { s.regions[rKeys[ri]]++; break; }
     }
   });
 
-  // Top state per NBFC
-  stats.forEach(s => {
-    let maxCnt = 0, maxState = '';
-    Object.entries(DATA.state_summary).forEach(([state, info]) => {
-      const cnt = info.n[String(s.i)] || 0;
-      if (cnt > maxCnt) { maxCnt = cnt; maxState = state; }
+  stats.forEach(function(s) {
+    var maxCnt=0, maxState='';
+    Object.entries(TRUE_BRANCH_COUNTS).forEach(function(e) {
+      var cnt = e[1][s.i]||0;
+      if (cnt > maxCnt) { maxCnt=cnt; maxState=e[0]; }
     });
-    s.topState = maxState; s.topStateCount = maxCnt;
-    // Strongest region
-    const maxReg = Object.entries(s.regions).sort((a,b)=>b[1]-a[1])[0];
+    s.topState=maxState; s.topStateCount=maxCnt;
+    var maxReg = Object.entries(s.regions).sort(function(a,b){return b[1]-a[1];})[0];
     s.strongestRegion = maxReg ? maxReg[0] : '';
   });
-
   return stats;
 }
 
