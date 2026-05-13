@@ -3243,6 +3243,8 @@ function drillDownState(stateName) {
    PANEL STATS
 ═══════════════════════════════════════════════════════════════ */
 function updatePanelStats() {
+  var ni = selectedMapNBFC !== undefined ? selectedMapNBFC : 3;
+  var nbfcColor = DATA.meta.nbfc_colors[ni];
   var trueTotals = {0:0,1:0,2:0,3:0};
   var allCities  = new Set();
   Object.entries(TRUE_BRANCH_COUNTS).forEach(function(e) {
@@ -3271,17 +3273,18 @@ function updatePanelStats() {
   barContainer.innerHTML = '';
   DATA.meta.nbfcs.forEach(function(name, i) {
     var cnt = trueTotals[i]||0, pct = Math.round(100*cnt/maxTrue);
-    var active = activeNBFCs.has(i);
+    var active = (i === ni);
     var row = document.createElement('div');
     row.className = 'nbfc-bar-row';
-    row.style.opacity = active ? '1' : '0.3';
+    row.style.opacity = active ? '1' : '0.35';
     row.innerHTML = '<div class="nbfc-bar-label"><span class="nbfc-dot" style="background:'+DATA.meta.nbfc_colors[i]+'"></span>'+names[i]+'</div>'
       +'<div class="nbfc-bar-track"><div class="nbfc-bar-fill" style="width:'+(active?pct:0)+'%;background:'+DATA.meta.nbfc_colors[i]+'"></div></div>'
       +'<div class="nbfc-bar-count">'+cnt.toLocaleString('en-IN')+'</div>';
     barContainer.appendChild(row);
   });
 
-  var topStates = Object.entries(POONA_STATE_COUNTS).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+  var selectedCounts = NBFC_STATE_COUNTS[ni] || {};
+  var topStates = Object.entries(selectedCounts).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
   var maxTop = topStates[0] ? topStates[0][1] : 1;
   var topContainer = document.getElementById('top-states-list');
   topContainer.innerHTML = '';
@@ -3294,7 +3297,7 @@ function updatePanelStats() {
     div.addEventListener('click', (function(s){ return function(){ drillDownState(s); }; })(state));
     div.innerHTML = '<div style="width:16px;font-size:10px;color:var(--text-muted);font-family:var(--font-mono);text-align:right;flex-shrink:0">'+(rank+1)+'</div>'
       +'<div class="nbfc-bar-label" style="margin-left:6px;font-size:11px;color:var(--text-secondary)">'+state+'</div>'
-      +'<div class="nbfc-bar-track"><div class="nbfc-bar-fill" style="width:'+pct+'%;background:'+DATA.meta.nbfc_colors[3]+'"></div></div>'
+      +'<div class="nbfc-bar-track"><div class="nbfc-bar-fill" style="width:'+pct+'%;background:'+nbfcColor+'"></div></div>'
       +'<div class="nbfc-bar-count">'+cnt.toLocaleString('en-IN')+'</div>';
     topContainer.appendChild(div);
   });
