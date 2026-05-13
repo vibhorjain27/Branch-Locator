@@ -2185,6 +2185,41 @@ svg.leaflet-image-layer.leaflet-interactive path {
 .pb-verdict-text { font-size: 11px; color: var(--text-secondary); line-height: 1.5; }
 .pb-verdict-text strong { color: var(--text-primary); display:block; margin-bottom:2px; }
 
+
+.bj-kpi-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px}
+.bj-total-card{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:var(--radius);padding:20px 24px;min-width:200px}
+.bj-total-num{font-family:var(--font-display);font-size:40px;color:var(--text-gold);line-height:1}
+.bj-total-lbl{font-size:11px;font-weight:700;color:var(--text-secondary);margin-top:4px;letter-spacing:.05em}
+.bj-total-sub{font-size:10px;color:var(--text-muted);margin-top:2px}
+.bj-kpi-card{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:var(--radius);padding:16px 18px;min-width:140px;flex:1;cursor:pointer;transition:border-color .2s}
+.bj-kpi-card:hover{border-color:var(--border-gold)}
+.bj-kpi-card.bj-active{border-color:var(--text-gold);background:var(--accent-dim)}
+.bj-kpi-dot{width:8px;height:8px;border-radius:50%;margin-bottom:8px}
+.bj-kpi-num{font-family:var(--font-display);font-size:28px;line-height:1}
+.bj-kpi-lbl{font-size:10px;font-weight:600;color:var(--text-muted);margin-top:4px;letter-spacing:.05em;text-transform:uppercase}
+.bj-kpi-pct{font-size:10px;color:var(--text-muted);margin-top:2px;font-family:var(--font-mono)}
+.bj-body{display:grid;grid-template-columns:320px 1fr;gap:20px;margin-bottom:24px}
+.bj-donut-card,.bj-states-card{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:var(--radius);padding:20px}
+.bj-donut-inner{display:flex;gap:20px;align-items:center}
+.bj-legend-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:12px}
+.bj-legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.bj-legend-lbl{flex:1;color:var(--text-secondary)}
+.bj-legend-val{font-family:var(--font-mono);color:var(--text-primary);font-size:11px}
+.bj-legend-pct{font-family:var(--font-mono);color:var(--text-muted);font-size:10px;min-width:32px;text-align:right}
+.bj-states-title{font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:14px}
+.bj-state-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.bj-state-rank{font-size:10px;color:var(--text-muted);font-family:var(--font-mono);min-width:20px;text-align:right}
+.bj-state-name{font-size:11px;color:var(--text-secondary);min-width:130px}
+.bj-state-bar{flex:1;height:10px;background:var(--bg-raised);border-radius:5px;overflow:hidden}
+.bj-state-bar-inner{display:flex;height:100%}
+.bj-state-val{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);min-width:48px;text-align:right}
+.bj-table-wrap{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:var(--radius);overflow:auto}
+.bj-table{width:100%;border-collapse:collapse;font-size:12px}
+.bj-table th{padding:8px 12px;text-align:right;font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--text-muted);border-bottom:1px solid var(--border-dim);text-transform:uppercase;white-space:nowrap}
+.bj-table th:first-child{text-align:left}
+.bj-table td{border-bottom:1px solid var(--border-dim);color:var(--text-muted);font-family:var(--font-mono)}
+.bj-table tr:hover td{background:var(--bg-raised)}
+.bj-section-title{font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px}
 </style>
 </head>
 <body>
@@ -2236,12 +2271,11 @@ svg.leaflet-image-layer.leaflet-interactive path {
         </svg>
         NBFC Head-to-Head
       </button>
-      <button class="nav-tab" data-tab="intel">
-        <svg class="tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/>
-        </svg>
-        Competitive Intel
+      <button class="nav-tab" data-tab="bajaj">
+        <svg class="tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="5" height="10" rx="1"/><rect x="9" y="6" width="5" height="7" rx="1"/></svg>
+        Bajaj Touchpoints
       </button>
+      
       <button class="nav-tab" data-tab="explorer">
         <svg class="tab-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
           <circle cx="6.5" cy="6.5" r="4"/><path d="M11 11l3 3"/>
@@ -2516,53 +2550,44 @@ svg.leaflet-image-layer.leaflet-interactive path {
     </div>
 
     <!-- TAB 4: Competitive Intelligence -->
-    <div class="tab-panel" id="tab-intel">
-      <div class="intel-topbar">
-        <span class="intel-topbar-title">Competitive Intelligence</span>
-        <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">Specialisation index · Not raw count</span>
+          <div class="tab-panel" id="tab-bajaj">
+        <div style="padding:20px 24px">
+          <div style="margin-bottom:20px">
+            <div style="font-family:var(--font-display);font-size:22px;color:var(--text-primary)">Bajaj Finance &mdash; Customer Touchpoints</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px">All branch types included &middot; Click any type card to filter states</div>
+          </div>
+          <div id="bj-kpi-row" class="bj-kpi-row"></div>
+          <div class="bj-body">
+            <div class="bj-donut-card">
+              <div class="bj-section-title">Touchpoint Mix</div>
+              <div class="bj-donut-inner">
+                <svg id="bj-donut-svg" width="152" height="152" viewBox="0 0 152 152" style="flex-shrink:0"></svg>
+                <div id="bj-donut-legend"></div>
+              </div>
+            </div>
+            <div class="bj-states-card">
+              <div class="bj-states-title">Top 15 States <span style="font-weight:400;color:var(--text-muted);font-size:9px">(select card to filter)</span></div>
+              <div id="bj-top-states"></div>
+            </div>
+          </div>
+          <div class="bj-section-title" style="margin-top:4px">State Breakdown by Type</div>
+          <div class="bj-table-wrap">
+            <table class="bj-table">
+              <thead><tr>
+                <th style="text-align:left">State</th>
+                <th style="color:#3B82F6">Main Branches</th>
+                <th style="color:#F59E0B">EMI Network</th>
+                <th style="color:#F97316">Collection</th>
+                <th style="color:#10B981">Healthcare</th>
+                <th style="color:#8B5CF6">Two-Wheeler</th>
+                <th>Total</th>
+              </tr></thead>
+              <tbody id="bj-state-tbody"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
-      <div class="intel-body">
-
-        <!-- Q1: Competitive map -->
-        <div class="intel-quadrant" style="padding:12px 14px">
-          <div class="intel-q-title">Competitive Landscape</div>
-          <div class="comp-legend" id="comp-legend"></div>
-          <div style="height:calc(100% - 80px);min-height:160px">
-            <svg id="comp-svg-map" viewBox="0 0 600 620" preserveAspectRatio="xMidYMid meet">
-              <g id="comp-states-group"></g>
-            </svg>
-          </div>
-        </div>
-
-        <!-- Q2: Concentration risk -->
-        <div class="intel-quadrant">
-          <div class="intel-q-title">Concentration Risk</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px">
-            % of each NBFC's branches in their top 3 states
-          </div>
-          <div class="conc-grid" id="conc-grid"></div>
-        </div>
-
-        <!-- Q3: Product geography mini-maps -->
-        <div class="intel-quadrant">
-          <div class="intel-q-title">Product Geography</div>
-          <div class="product-maps-grid" id="product-maps-grid"></div>
-        </div>
-
-        <!-- Q4: Coverage gap analysis -->
-        <div class="intel-quadrant">
-          <div class="intel-q-title">Coverage Gap Analysis</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">
-            States ranked by branches per million population (proxy)
-          </div>
-          <div id="gap-analysis-bars"></div>
-        </div>
-
-      </div>
-    </div>
-
-<!-- TAB 5: Branch Explorer -->
-    <div class="tab-panel" id="tab-explorer">
+<div class="tab-panel" id="tab-explorer">
       <div class="explorer-topbar">
         <span class="explorer-topbar-title">Branch Explorer</span>
         <span class="explorer-result-count" id="explorer-count">— branches</span>
@@ -3843,11 +3868,7 @@ function renderGapAnalysis() {
 }
 
 /* Tab 4 init on first click */
-document.querySelector('[data-tab="intel"]').addEventListener('click', function() {
-  if (DATA && !document.getElementById('conc-grid').innerHTML.trim()) {
-    initTab4();
-  }
-});
+/* Competitive Intel removed */
 
 /* ═══════════════════════════════════════════════════════════════
    TAB 5 — BRANCH EXPLORER
@@ -4874,6 +4895,173 @@ document.querySelector('[data-tab="compare"]').addEventListener('click', functio
 const _origDrillDown = drillDownState;
 
 
+
+/* ------ BAJAJ TOUCHPOINTS TAB --------------------------------------------------------------------------------------------- */
+
+const BAJAJ_TYPES = [
+  { ot: 6, label: 'Main Branches',     short: 'Branch',     color: '#3B82F6', icon: 'B' },
+  { ot: 2, label: 'EMI Network',       short: 'EMI',        color: '#F59E0B', icon: 'E' },
+  { ot: 1, label: 'Collection Centres',short: 'Collection', color: '#F97316', icon: 'C' },
+  { ot: 4, label: 'Healthcare',        short: 'Health',     color: '#10B981', icon: 'H' },
+  { ot: 7, label: 'Two-Wheeler',       short: '2W',         color: '#8B5CF6', icon: 'W' },
+];
+
+let bajajActiveType = null; // null = all types
+
+function initBajajTab() {
+  // Build data index
+  var bajajBranches = DATA.branches.filter(function(b){ return b.n === 0; });
+  var OT = DATA.meta.office_types;
+
+  // Count by type
+  var typeCounts = {};
+  BAJAJ_TYPES.forEach(function(t){ typeCounts[t.ot] = 0; });
+  bajajBranches.forEach(function(b){
+    if (typeCounts[b.ot] !== undefined) typeCounts[b.ot]++;
+  });
+  var grandTotal = Object.values(typeCounts).reduce(function(a,b){return a+b;},0);
+
+  // State counts by type
+  var stateByType = {};
+  BAJAJ_TYPES.forEach(function(t){ stateByType[t.ot] = {}; });
+  bajajBranches.forEach(function(b){
+    if (!b.st || stateByType[b.ot] === undefined) return;
+    stateByType[b.ot][b.st] = (stateByType[b.ot][b.st]||0) + 1;
+  });
+  var stateTotal = {};
+  bajajBranches.forEach(function(b){
+    if (!b.st) return;
+    stateTotal[b.st] = (stateTotal[b.st]||0) + 1;
+  });
+
+  renderBajajKPIs(typeCounts, grandTotal);
+  renderBajajDonut(typeCounts, grandTotal);
+  renderBajajStateTable(stateTotal, stateByType);
+  renderBajajTopStates(stateTotal, stateByType);
+
+  // KPI card click = filter
+  document.querySelectorAll('.bj-kpi-card').forEach(function(card) {
+    card.addEventListener('click', function() {
+      var ot = parseInt(card.dataset.ot);
+      bajajActiveType = (bajajActiveType === ot) ? null : ot;
+      document.querySelectorAll('.bj-kpi-card').forEach(function(c) {
+        c.classList.toggle('bj-active', parseInt(c.dataset.ot) === bajajActiveType);
+      });
+      var stData = bajajActiveType !== null ? stateByType[bajajActiveType] : stateTotal;
+      renderBajajTopStates(stData, stateByType);
+    });
+  });
+}
+
+function renderBajajKPIs(typeCounts, grandTotal) {
+  var container = document.getElementById('bj-kpi-row');
+  container.innerHTML = '';
+
+  // Grand total card first
+  var totalCard = document.createElement('div');
+  totalCard.className = 'bj-total-card';
+  totalCard.innerHTML = '<div class="bj-total-num">'+grandTotal.toLocaleString('en-IN')+'</div>'
+    +'<div class="bj-total-lbl">Total Customer Touchpoints</div>'
+    +'<div class="bj-total-sub">Bajaj Finance -- All India -- 34 States & UTs</div>';
+  container.appendChild(totalCard);
+
+  BAJAJ_TYPES.forEach(function(t) {
+    var cnt  = typeCounts[t.ot] || 0;
+    var pct  = Math.round(100 * cnt / grandTotal);
+    var card = document.createElement('div');
+    card.className = 'bj-kpi-card';
+    card.dataset.ot = t.ot;
+    card.innerHTML  =
+      '<div class="bj-kpi-dot" style="background:'+t.color+'"></div>'
+      +'<div class="bj-kpi-num" style="color:'+t.color+'">'+cnt.toLocaleString('en-IN')+'</div>'
+      +'<div class="bj-kpi-lbl">'+t.label+'</div>'
+      +'<div class="bj-kpi-pct">'+pct+'% of total</div>';
+    container.appendChild(card);
+  });
+}
+
+function renderBajajDonut(typeCounts, grandTotal) {
+  var R=64, CX=76, CY=76, strokeW=26;
+  var circ = 2*Math.PI*R;
+  var offset=0, slices='', legend='';
+
+  BAJAJ_TYPES.forEach(function(t) {
+    var cnt  = typeCounts[t.ot]||0; if (!cnt) return;
+    var pct  = cnt/grandTotal;
+    var dash = pct*circ, gap=circ-dash;
+    slices += '<circle cx="'+CX+'" cy="'+CY+'" r="'+R
+      +'" fill="none" stroke="'+t.color+'" stroke-width="'+strokeW
+      +'" stroke-dasharray="'+dash.toFixed(2)+' '+gap.toFixed(2)
+      +'" stroke-dashoffset="'+(-offset).toFixed(2)+'" opacity="0.9"/>';
+    offset += dash;
+    legend += '<div class="bj-legend-row">'
+      +'<span class="bj-legend-dot" style="background:'+t.color+'"></span>'
+      +'<span class="bj-legend-lbl">'+t.label+'</span>'
+      +'<span class="bj-legend-val">'+cnt.toLocaleString('en-IN')+'</span>'
+      +'<span class="bj-legend-pct">'+Math.round(100*pct)+'%</span>'
+      +'</div>';
+  });
+
+  document.getElementById('bj-donut-svg').innerHTML =
+    '<circle cx="'+CX+'" cy="'+CY+'" r="'+R+'" fill="none" stroke="var(--bg-raised)" stroke-width="'+strokeW+'"/>'
+    +slices
+    +'<text x="'+CX+'" y="'+(CY-8)+'" text-anchor="middle" fill="var(--text-primary)" style="font-family:var(--font-display);font-size:22px">'+grandTotal.toLocaleString('en-IN')+'</text>'
+    +'<text x="'+CX+'" y="'+(CY+10)+'" text-anchor="middle" fill="var(--text-muted)" style="font-family:var(--font-ui);font-size:9px;letter-spacing:.08em">TOUCHPOINTS</text>';
+
+  document.getElementById('bj-donut-legend').innerHTML = legend;
+}
+
+function renderBajajTopStates(stateData, stateByType) {
+  var entries = Object.entries(stateData).sort(function(a,b){return b[1]-a[1];}).slice(0,15);
+  var maxVal  = entries[0] ? entries[0][1] : 1;
+  var container = document.getElementById('bj-top-states');
+  container.innerHTML = '';
+
+  entries.forEach(function(entry, rank) {
+    var state = entry[0], total = entry[1];
+    // Build stacked bar segments
+    var segs = '';
+    var runW  = 0;
+    BAJAJ_TYPES.forEach(function(t) {
+      var cnt = (stateByType[t.ot] && stateByType[t.ot][state]) ? stateByType[t.ot][state] : 0;
+      if (!cnt) return;
+      var w = (cnt/maxVal)*100;
+      segs += '<div style="width:'+w.toFixed(1)+'%;height:100%;background:'+t.color+';flex-shrink:0"></div>';
+      runW += w;
+    });
+
+    var row = document.createElement('div');
+    row.className = 'bj-state-row';
+    row.innerHTML =
+      '<div class="bj-state-rank">'+('0'+(rank+1)).slice(-2)+'</div>'
+      +'<div class="bj-state-name">'+state+'</div>'
+      +'<div class="bj-state-bar"><div class="bj-state-bar-inner">'+segs+'</div></div>'
+      +'<div class="bj-state-val">'+total.toLocaleString('en-IN')+'</div>';
+    container.appendChild(row);
+  });
+}
+
+function renderBajajStateTable(stateTotal, stateByType) {
+  var entries = Object.entries(stateTotal).sort(function(a,b){return b[1]-a[1];});
+  var tbody = document.getElementById('bj-state-tbody');
+  tbody.innerHTML = entries.map(function(entry) {
+    var state = entry[0], total = entry[1];
+    var cells = BAJAJ_TYPES.map(function(t) {
+      var cnt = (stateByType[t.ot] && stateByType[t.ot][state]) ? stateByType[t.ot][state] : 0;
+      return '<td style="text-align:right;padding:6px 12px">'+(cnt || '&mdash;')+'</td>';
+    }).join('');
+    return '<tr><td style="padding:6px 12px;color:var(--text-secondary)">'+state+'</td>'
+      +cells
+      +'<td style="text-align:right;padding:6px 12px;font-weight:600;color:var(--text-primary)">'+total.toLocaleString('en-IN')+'</td></tr>';
+  }).join('');
+}
+
+
+document.querySelector('[data-tab="bajaj"]').addEventListener('click', function() {
+  if (!document.getElementById('bj-kpi-row').innerHTML.trim()) {
+    initBajajTab();
+  }
+});
 </script>
 </body>
 </html>
