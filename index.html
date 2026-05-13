@@ -3036,18 +3036,15 @@ function buildTrueBranchIndexes() {
 }
 
 function updateMapColors() {
-  var ni    = selectedMapNBFC !== undefined ? selectedMapNBFC : 3;
-  var color = DATA.meta.nbfc_colors[ni];
-  var counts= NBFC_STATE_COUNTS[ni] || {};
-  var vals  = Object.values(counts);
-  var maxC  = vals.length ? Math.max.apply(null, vals) : 0;
-
-  // Parse color hex to RGB for gradient
+  var ni     = (typeof selectedMapNBFC !== 'undefined') ? selectedMapNBFC : 3;
+  var color  = DATA.meta.nbfc_colors[ni];
+  var counts = (NBFC_STATE_COUNTS && NBFC_STATE_COUNTS[ni]) ? NBFC_STATE_COUNTS[ni] : {};
+  var vals   = Object.values(counts);
+  var maxC   = vals.length ? Math.max.apply(null, vals) : 0;
   var hex = color.replace('#','');
   var tr  = parseInt(hex.substring(0,2),16);
   var tg  = parseInt(hex.substring(2,4),16);
   var tb  = parseInt(hex.substring(4,6),16);
-
   function nbfcFill(count) {
     if (!count || !maxC) return '#0c1520';
     var t = Math.sqrt(count) / Math.sqrt(maxC);
@@ -3057,14 +3054,13 @@ function updateMapColors() {
     var b = Math.round(32 + t * (tb - 32));
     return 'rgb('+r+','+g+','+b+')';
   }
-
-  d3.selectAll('.state-path').each(function() {
-    var stateName = this.dataset.state;
-    var count = counts[stateName] || 0;
+  document.querySelectorAll('.state-path').forEach(function(el) {
+    var stateName = el.dataset.state;
+    var count = (stateName && counts[stateName]) ? counts[stateName] : 0;
     var fill  = nbfcFill(count);
-    d3.select(this).style('fill', fill).attr('data-base-fill', fill);
+    el.style.fill = fill;
+    el.setAttribute('data-base-fill', fill);
   });
-
   buildLegend(maxC, color);
 }
 
@@ -3243,8 +3239,11 @@ function drillDownState(stateName) {
    PANEL STATS
 ═══════════════════════════════════════════════════════════════ */
 function updatePanelStats() {
-  var ni = selectedMapNBFC !== undefined ? selectedMapNBFC : 3;
+  var ni = (typeof selectedMapNBFC !== 'undefined') ? selectedMapNBFC : 3;
   var nbfcColor = DATA.meta.nbfc_colors[ni];
+  var nbfcShort = DATA.meta.nbfcs[ni].replace(' Finance','').replace(' Fincorp','');
+  var topLbl = document.getElementById('top-states-nbfc-lbl');
+  if (topLbl) topLbl.textContent = '(' + nbfcShort + ')';
   var trueTotals = {0:0,1:0,2:0,3:0};
   var allCities  = new Set();
   Object.entries(TRUE_BRANCH_COUNTS).forEach(function(e) {
@@ -3308,12 +3307,14 @@ function updatePanelStats() {
    BOTTOM STATE BAR
 ═══════════════════════════════════════════════════════════════ */
 function updateStateBars() {
-  var sorted = Object.entries(DATA.state_summary)
-    .map(function(e){ return [e[0], POONA_STATE_COUNTS[e[0]]||0]; })
-    .filter(function(e){ return e[1] > 0; })
-    .sort(function(a,b){ return b[1]-a[1]; });
-  Object.keys(DATA.state_summary).forEach(function(s){
-    if (!POONA_STATE_COUNTS[s]) sorted.push([s,0]);
+  var ni = (typeof selectedMapNBFC !== 'undefined') ? selectedMapNBFC : 3;
+  var nbfcColor = DATA.meta.nbfc_colors[ni];
+  var stateCounts = (NBFC_STATE_COUNTS && NBFC_STATE_COUNTS[ni]) ? NBFC_STATE_COUNTS[ni] : {};
+  var sorted = Object.keys(DATA.state_summary).map(function(s) {
+    return [s, stateCounts[s]||0];
+  }).filter(function(e){ return e[1] > 0; }).sort(function(a,b){ return b[1]-a[1]; });
+  Object.keys(DATA.state_summary).forEach(function(s) {
+    if (!stateCounts[s]) sorted.push([s, 0]);
   });
   var maxVal = sorted[0] ? sorted[0][1] : 1;
   var container = document.getElementById('state-bar-scroll');
@@ -3321,10 +3322,10 @@ function updateStateBars() {
   sorted.forEach(function(entry) {
     var state = entry[0], cnt = entry[1];
     var h     = cnt > 0 ? Math.max(4, Math.round((cnt/maxVal)*40)) : 3;
-    var color = cnt > 0 ? DATA.meta.nbfc_colors[3] : '#1e2535';
+    var color = cnt > 0 ? nbfcColor : '#1e2535';
     var div   = document.createElement('div');
     div.className = 'state-bar-item'+(state===selectedState?' selected':'');
-    div.title = state+': '+(cnt>0 ? cnt+' Poonawalla branches' : 'No Poonawalla presence');
+    div.title = state+': '+(cnt>0 ? cnt+' branches' : 'No presence');
     div.innerHTML = '<div class="sbar" style="height:'+h+'px;background:'+color+'"></div>'
       +'<div class="sname">'+state.split(' ')[0]+'</div>';
     div.addEventListener('click', (function(s){ return function(){
