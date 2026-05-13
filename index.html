@@ -3239,11 +3239,8 @@ function drillDownState(stateName) {
    PANEL STATS
 ═══════════════════════════════════════════════════════════════ */
 function updatePanelStats() {
-  var ni = (typeof selectedMapNBFC !== 'undefined') ? selectedMapNBFC : 3;
+  var ni = selectedMapNBFC !== undefined ? selectedMapNBFC : 3;
   var nbfcColor = DATA.meta.nbfc_colors[ni];
-  var nbfcShort = DATA.meta.nbfcs[ni].replace(' Finance','').replace(' Fincorp','');
-  var topLbl = document.getElementById('top-states-nbfc-lbl');
-  if (topLbl) topLbl.textContent = '(' + nbfcShort + ')';
   var trueTotals = {0:0,1:0,2:0,3:0};
   var allCities  = new Set();
   Object.entries(TRUE_BRANCH_COUNTS).forEach(function(e) {
@@ -4352,8 +4349,6 @@ function drawerField(label, value) {
 
 /* ── State charts (donut + city bars) ───────────────────────── */
 function renderStateCharts(stateName) {
-  var info    = DATA.state_summary[stateName];
-  var stCities= DATA.state_cities[stateName] || [];
   var panel   = document.getElementById('state-chart-panel');
   var tc      = TRUE_BRANCH_COUNTS[stateName] || {0:0,1:0,2:0,3:0};
 
@@ -4362,6 +4357,7 @@ function renderStateCharts(stateName) {
   });
   var grandTotal = nbfcTotals.reduce(function(a,b){return a+b;},0);
 
+  // Donut
   var R=52, CX=62, CY=62, strokeW=22;
   var circ = 2*Math.PI*R;
   var offset=0, slices='', legendItems='';
@@ -4400,23 +4396,39 @@ function renderStateCharts(stateName) {
     +'Top Cities <span style="font-weight:400;color:var(--text-muted);font-family:var(--font-mono);font-size:9px">(click to filter map)</span></div>'
     +'</div>';
 
+  // Build TRUE city counts from branches - bypasses inflated state_cities
+  var cityMap = {};
+  DATA.branches.forEach(function(b) {
+    if (b.st !== stateName || !b.ci || !isTrueBranch(b)) return;
+    if (!activeMapNBFCs.has(b.n)) return;
+    if (!cityMap[b.ci]) cityMap[b.ci] = {0:0,1:0,2:0,3:0,t:0};
+    cityMap[b.ci][b.n]++;
+    cityMap[b.ci].t++;
+  });
+
+  var cityList = Object.entries(cityMap)
+    .sort(function(a,b){ return b[1].t - a[1].t; })
+    .slice(0,12);
+
+  var maxCity = cityList[0] ? cityList[0][1].t : 1;
   var citySection = document.getElementById('city-bars-section');
-  var maxCity = stCities[0] ? stCities[0].t : 1;
-  stCities.slice(0,12).forEach(function(city) {
+
+  cityList.forEach(function(entry) {
+    var city = entry[0], counts = entry[1];
     var segs = '';
     DATA.meta.nbfcs.forEach(function(_, i) {
       if (!activeMapNBFCs.has(i)) return;
-      var cnt = city.n[String(i)]||0; if (!cnt) return;
+      var cnt = counts[i]||0; if (!cnt) return;
       var w = (cnt/(maxCity||1))*100;
       segs += '<div class="city-bar-seg" style="width:'+w.toFixed(1)+'%;background:'+DATA.meta.nbfc_colors[i]+'"></div>';
     });
     var div = document.createElement('div');
     div.className = 'city-bar';
-    div.dataset.city = city.c;
-    div.innerHTML = '<div class="city-bar-label">'+city.c+'</div>'
+    div.dataset.city = city;
+    div.innerHTML = '<div class="city-bar-label">'+city+'</div>'
       +'<div class="city-bar-track">'+segs+'</div>'
-      +'<div class="city-bar-count">'+city.t.toLocaleString('en-IN')+'</div>';
-    div.addEventListener('click', (function(c){ return function(){ filterMapToCity(c); }; })(city.c));
+      +'<div class="city-bar-count">'+counts.t.toLocaleString('en-IN')+'</div>';
+    div.addEventListener('click', (function(c){ return function(){ filterMapToCity(c); }; })(city));
     citySection.appendChild(div);
   });
 }
