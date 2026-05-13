@@ -2789,7 +2789,9 @@ const NBFC_INLINE_DATA = {"meta":{"total":21219,"geocoded":21219,"nbfcs":["Bajaj
    GLOBALS & STATE
 ═══════════════════════════════════════════════════════════════ */
 let DATA = null;
-let activeNBFCs = new Set([0, 1, 2, 3]);
+let activeNBFCs = new Set([3]);
+let selectedMapNBFC = 3;
+let NBFC_STATE_COUNTS = {0:{},1:{},2:{},3:{}};
 let selectedState = null;
 let TRUE_BRANCH_COUNTS = {};
 let POONA_STATE_COUNTS  = {};
@@ -2856,27 +2858,32 @@ function countUp(el, target, duration = 1200) {
    NBFC FILTER PILLS
 ═══════════════════════════════════════════════════════════════ */
 function buildNBFCFilters() {
-  const container = document.getElementById('nbfc-filters');
-  DATA.meta.nbfcs.forEach((name, i) => {
-    const pill = document.createElement('div');
+  var container = document.getElementById('nbfc-filters');
+  container.innerHTML = '';
+  // Poonawalla first, then others
+  var order = [3, 0, 1, 2];
+  order.forEach(function(i) {
+    var name  = DATA.meta.nbfcs[i];
+    var color = DATA.meta.nbfc_colors[i];
+    var pill  = document.createElement('div');
     pill.className = 'nbfc-pill';
-    pill.dataset.nbfc = i;
-    pill.dataset.active = 'true';
-    pill.innerHTML = `<span class="dot"></span>${name}`;
-    pill.addEventListener('click', () => toggleNBFC(i, pill));
+    pill.dataset.nbfc   = i;
+    pill.dataset.active = i === 3 ? 'true' : 'false';
+    pill.innerHTML = '<span class="dot" style="background:'+color+'"></span>'
+      + name.replace(' Finance','').replace(' Fincorp','');
+    pill.addEventListener('click', (function(idx){ return function(){ selectNBFC(idx); }; })(i));
     container.appendChild(pill);
   });
 }
 
-function toggleNBFC(idx, pill) {
-  if (activeNBFCs.has(idx)) {
-    if (activeNBFCs.size === 1) return; // keep at least one
-    activeNBFCs.delete(idx);
-    pill.dataset.active = 'false';
-  } else {
-    activeNBFCs.add(idx);
-    pill.dataset.active = 'true';
-  }
+function selectNBFC(idx) {
+  selectedMapNBFC = idx;
+  activeNBFCs = new Set([idx]);
+  // Update pill visuals
+  document.querySelectorAll('.nbfc-pill').forEach(function(pill) {
+    var pi = parseInt(pill.dataset.nbfc);
+    pill.dataset.active = pi === idx ? 'true' : 'false';
+  });
   updateMapColors();
   updatePanelStats();
   updateStateBars();
@@ -3010,6 +3017,8 @@ function isTrueBranch(b) {
 function buildTrueBranchIndexes() {
   TRUE_BRANCH_COUNTS = {};
   POONA_STATE_COUNTS = {};
+  NBFC_STATE_COUNTS  = {0:{}, 1:{}, 2:{}, 3:{}};
+
   DATA.branches.forEach(function(b) {
     if (!b.st) return;
     var keep = (b.n === 0 && b.ot === 6)
@@ -3019,6 +3028,7 @@ function buildTrueBranchIndexes() {
     if (!keep) return;
     if (!TRUE_BRANCH_COUNTS[b.st]) TRUE_BRANCH_COUNTS[b.st] = {0:0,1:0,2:0,3:0};
     TRUE_BRANCH_COUNTS[b.st][b.n]++;
+    NBFC_STATE_COUNTS[b.n][b.st] = (NBFC_STATE_COUNTS[b.n][b.st]||0) + 1;
     if (b.n === 3) POONA_STATE_COUNTS[b.st] = (POONA_STATE_COUNTS[b.st]||0)+1;
   });
   var vals = Object.values(POONA_STATE_COUNTS);
@@ -3026,34 +3036,51 @@ function buildTrueBranchIndexes() {
 }
 
 function updateMapColors() {
-  function poonaFill(count) {
-    if (!count || !POONA_MAX_COUNT) return '#0c1520';
-    var t = Math.sqrt(count) / Math.sqrt(POONA_MAX_COUNT);
+  var ni    = selectedMapNBFC !== undefined ? selectedMapNBFC : 3;
+  var color = DATA.meta.nbfc_colors[ni];
+  var counts= NBFC_STATE_COUNTS[ni] || {};
+  var vals  = Object.values(counts);
+  var maxC  = vals.length ? Math.max.apply(null, vals) : 0;
+
+  // Parse color hex to RGB for gradient
+  var hex = color.replace('#','');
+  var tr  = parseInt(hex.substring(0,2),16);
+  var tg  = parseInt(hex.substring(2,4),16);
+  var tb  = parseInt(hex.substring(4,6),16);
+
+  function nbfcFill(count) {
+    if (!count || !maxC) return '#0c1520';
+    var t = Math.sqrt(count) / Math.sqrt(maxC);
     if (t > 1) t = 1;
-    var r = Math.round(12  + t * (11  - 12));
-    var g = Math.round(16  + t * (84  - 16));
-    var b = Math.round(32  + t * (255 - 32));
+    var r = Math.round(12 + t * (tr - 12));
+    var g = Math.round(16 + t * (tg - 16));
+    var b = Math.round(32 + t * (tb - 32));
     return 'rgb('+r+','+g+','+b+')';
   }
+
   d3.selectAll('.state-path').each(function() {
     var stateName = this.dataset.state;
-    var count = POONA_STATE_COUNTS[stateName] || 0;
-    var fill  = poonaFill(count);
+    var count = counts[stateName] || 0;
+    var fill  = nbfcFill(count);
     d3.select(this).style('fill', fill).attr('data-base-fill', fill);
   });
-  buildLegend(POONA_MAX_COUNT);
+
+  buildLegend(maxC, color);
 }
 
-function buildLegend(maxVal) {
-  var mv = maxVal || POONA_MAX_COUNT || 1;
+function buildLegend(maxVal, color) {
   var scale = document.getElementById('legend-scale');
   if (!scale) return;
+  var hex = (color || '#0b5fff').replace('#','');
+  var tr  = parseInt(hex.substring(0,2),16);
+  var tg  = parseInt(hex.substring(2,4),16);
+  var tb  = parseInt(hex.substring(4,6),16);
   scale.innerHTML = '';
   for (var i = 0; i <= 6; i++) {
     var t = i / 6;
-    var r = Math.round(12  + t * (11  - 12));
-    var g = Math.round(16  + t * (84  - 16));
-    var b = Math.round(32  + t * (255 - 32));
+    var r = Math.round(12 + t * (tr - 12));
+    var g = Math.round(16 + t * (tg - 16));
+    var b = Math.round(32 + t * (tb - 32));
     var div = document.createElement('div');
     div.className = 'legend-step';
     div.style.background = i === 0 ? '#0c1520' : 'rgb('+r+','+g+','+b+')';
