@@ -2198,10 +2198,10 @@ svg.leaflet-image-layer.leaflet-interactive path {
 .bj-kpi-num{font-family:var(--font-display);font-size:28px;line-height:1}
 .bj-kpi-lbl{font-size:10px;font-weight:600;color:var(--text-muted);margin-top:4px;letter-spacing:.05em;text-transform:uppercase}
 .bj-kpi-pct{font-size:10px;color:var(--text-muted);margin-top:2px;font-family:var(--font-mono)}
-.bj-body{display:grid;grid-template-columns:320px 1fr;gap:20px;margin-bottom:24px}
-.bj-donut-card,.bj-states-card{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:var(--radius);padding:20px}
-.bj-donut-inner{display:flex;gap:20px;align-items:center}
-.bj-legend-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:12px}
+.bj-body{display:grid;grid-template-columns:280px 1fr;gap:20px;margin-bottom:24px;min-width:0}
+.bj-donut-card,.bj-states-card{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:var(--radius);padding:20px;min-width:0;overflow:hidden}
+.bj-donut-inner{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+.bj-legend-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:11px}
 .bj-legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .bj-legend-lbl{flex:1;color:var(--text-secondary)}
 .bj-legend-val{font-family:var(--font-mono);color:var(--text-primary);font-size:11px}
@@ -2220,15 +2220,6 @@ svg.leaflet-image-layer.leaflet-interactive path {
 .bj-table td{border-bottom:1px solid var(--border-dim);color:var(--text-muted);font-family:var(--font-mono)}
 .bj-table tr:hover td{background:var(--bg-raised)}
 .bj-section-title{font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px}
-
-.bj-tbl-hdr,.bj-tbl-row{display:flex;align-items:center;gap:4px;padding:5px 0;font-size:11px}
-.bj-tbl-hdr{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--border-dim);margin-bottom:4px;padding-bottom:8px}
-.bj-tbl-row{border-bottom:1px solid var(--border-dim)}
-.bj-tbl-row:hover{background:var(--bg-raised);border-radius:4px}
-.bj-tc-state{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-secondary)}
-.bj-tc-rank{font-size:9px;color:var(--text-muted);font-family:var(--font-mono);margin-right:6px}
-.bj-tc-num{width:72px;text-align:right;font-family:var(--font-mono);color:var(--text-muted);flex-shrink:0}
-.bj-tc-total{width:56px;text-align:right;font-family:var(--font-mono);font-weight:600;color:var(--text-primary);flex-shrink:0}
 </style>
 </head>
 <body>
@@ -2570,12 +2561,12 @@ svg.leaflet-image-layer.leaflet-interactive path {
             <div class="bj-donut-card">
               <div class="bj-section-title">Touchpoint Mix</div>
               <div class="bj-donut-inner">
-                <svg id="bj-donut-svg" width="152" height="152" viewBox="0 0 152 152" style="flex-shrink:0"></svg>
+                <svg id="bj-donut-svg" width="124" height="124" viewBox="0 0 152 152" style="flex-shrink:0;align-self:center"></svg>
                 <div id="bj-donut-legend"></div>
               </div>
             </div>
             <div class="bj-states-card">
-              <div class="bj-states-title" id="bj-states-title">Top 15 States <span style="font-weight:400;color:var(--text-muted);font-size:9px">(select card to filter)</span></div>
+              <div class="bj-states-title">Top 15 States <span style="font-weight:400;color:var(--text-muted);font-size:9px">(select card to filter)</span></div>
               <div id="bj-top-states"></div>
             </div>
           </div>
@@ -4918,8 +4909,11 @@ const BAJAJ_TYPES = [
 let bajajActiveType = null; // null = all types
 
 function initBajajTab() {
+  // Build data index
   var bajajBranches = DATA.branches.filter(function(b){ return b.n === 0; });
+  var OT = DATA.meta.office_types;
 
+  // Count by type
   var typeCounts = {};
   BAJAJ_TYPES.forEach(function(t){ typeCounts[t.ot] = 0; });
   bajajBranches.forEach(function(b){
@@ -4927,6 +4921,7 @@ function initBajajTab() {
   });
   var grandTotal = Object.values(typeCounts).reduce(function(a,b){return a+b;},0);
 
+  // State counts by type
   var stateByType = {};
   BAJAJ_TYPES.forEach(function(t){ stateByType[t.ot] = {}; });
   bajajBranches.forEach(function(b){
@@ -4942,8 +4937,9 @@ function initBajajTab() {
   renderBajajKPIs(typeCounts, grandTotal);
   renderBajajDonut(typeCounts, grandTotal);
   renderBajajStateTable(stateTotal, stateByType);
-  renderBajajTopStates(null, stateTotal, stateByType);
+  renderBajajTopStates(stateTotal, stateByType);
 
+  // KPI card click = filter
   document.querySelectorAll('.bj-kpi-card').forEach(function(card) {
     card.addEventListener('click', function() {
       var ot = parseInt(card.dataset.ot);
@@ -4951,7 +4947,8 @@ function initBajajTab() {
       document.querySelectorAll('.bj-kpi-card').forEach(function(c) {
         c.classList.toggle('bj-active', parseInt(c.dataset.ot) === bajajActiveType);
       });
-      renderBajajTopStates(bajajActiveType, stateTotal, stateByType);
+      var stData = bajajActiveType !== null ? stateByType[bajajActiveType] : stateTotal;
+      renderBajajTopStates(stData, stateByType);
     });
   });
 }
@@ -5014,66 +5011,34 @@ function renderBajajDonut(typeCounts, grandTotal) {
   document.getElementById('bj-donut-legend').innerHTML = legend;
 }
 
-function renderBajajTopStates(activeOt, stateTotal, stateByType) {
+function renderBajajTopStates(stateData, stateByType) {
+  var entries = Object.entries(stateData).sort(function(a,b){return b[1]-a[1];}).slice(0,15);
+  var maxVal  = entries[0] ? entries[0][1] : 1;
   var container = document.getElementById('bj-top-states');
-  var titleEl   = document.getElementById('bj-states-title');
   container.innerHTML = '';
 
-  if (activeOt === null || activeOt === undefined) {
-    // Default: number table --- all 5 types as columns
-    if (titleEl) titleEl.textContent = 'Top 15 States --- All Touchpoints';
-    var entries = Object.entries(stateTotal).sort(function(a,b){return b[1]-a[1];}).slice(0,15);
-
-    // Header row
-    var hdr = document.createElement('div');
-    hdr.className = 'bj-tbl-hdr';
-    hdr.innerHTML = '<div class="bj-tc-state">State</div>'
-      + BAJAJ_TYPES.map(function(t){
-          return '<div class="bj-tc-num" style="color:'+t.color+'">'+t.short+'</div>';
-        }).join('')
-      + '<div class="bj-tc-total">Total</div>';
-    container.appendChild(hdr);
-
-    entries.forEach(function(entry, rank) {
-      var state = entry[0], total = entry[1];
-      var row = document.createElement('div');
-      row.className = 'bj-tbl-row';
-      row.innerHTML = '<div class="bj-tc-state"><span class="bj-tc-rank">'+(rank+1)+'</span>'+state+'</div>'
-        + BAJAJ_TYPES.map(function(t){
-            var cnt = (stateByType[t.ot] && stateByType[t.ot][state]) ? stateByType[t.ot][state] : 0;
-            return '<div class="bj-tc-num">'+(cnt || '&mdash;')+'</div>';
-          }).join('')
-        + '<div class="bj-tc-total">'+total.toLocaleString('en-IN')+'</div>';
-      container.appendChild(row);
+  entries.forEach(function(entry, rank) {
+    var state = entry[0], total = entry[1];
+    // Build stacked bar segments
+    var segs = '';
+    var runW  = 0;
+    BAJAJ_TYPES.forEach(function(t) {
+      var cnt = (stateByType[t.ot] && stateByType[t.ot][state]) ? stateByType[t.ot][state] : 0;
+      if (!cnt) return;
+      var w = (cnt/maxVal)*100;
+      segs += '<div style="width:'+w.toFixed(1)+'%;height:100%;background:'+t.color+';flex-shrink:0"></div>';
+      runW += w;
     });
 
-  } else {
-    // Single-type bar chart
-    var typeInfo = BAJAJ_TYPES.filter(function(t){ return t.ot === activeOt; })[0];
-    if (!typeInfo) return;
-    if (titleEl) titleEl.textContent = 'Top 15 States --- ' + typeInfo.label;
-    var typeData = stateByType[activeOt] || {};
-    var typeTotal = Object.values(typeData).reduce(function(a,b){return a+b;},0);
-    var entries2 = Object.entries(typeData).sort(function(a,b){return b[1]-a[1];}).slice(0,15);
-    var maxVal = entries2[0] ? entries2[0][1] : 1;
-
-    entries2.forEach(function(entry, rank) {
-      var state = entry[0], cnt = entry[1];
-      var pct   = typeTotal > 0 ? (cnt/typeTotal*100).toFixed(1) : '0';
-      var barW  = (cnt/maxVal*100).toFixed(1);
-      var row = document.createElement('div');
-      row.className = 'bj-state-row';
-      row.innerHTML =
-        '<div class="bj-state-rank">'+('0'+(rank+1)).slice(-2)+'</div>'
-        +'<div class="bj-state-name">'+state+'</div>'
-        +'<div class="bj-state-bar">'
-        +'<div style="width:'+barW+'%;height:100%;background:'+typeInfo.color+';border-radius:5px;transition:width .4s ease"></div>'
-        +'</div>'
-        +'<div class="bj-state-val">'+cnt.toLocaleString('en-IN')+'</div>'
-        +'<div style="font-size:10px;color:var(--text-muted);font-family:var(--font-mono);min-width:36px;text-align:right">'+pct+'%</div>';
-      container.appendChild(row);
-    });
-  }
+    var row = document.createElement('div');
+    row.className = 'bj-state-row';
+    row.innerHTML =
+      '<div class="bj-state-rank">'+('0'+(rank+1)).slice(-2)+'</div>'
+      +'<div class="bj-state-name">'+state+'</div>'
+      +'<div class="bj-state-bar"><div class="bj-state-bar-inner">'+segs+'</div></div>'
+      +'<div class="bj-state-val">'+total.toLocaleString('en-IN')+'</div>';
+    container.appendChild(row);
+  });
 }
 
 function renderBajajStateTable(stateTotal, stateByType) {
