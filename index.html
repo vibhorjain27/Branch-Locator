@@ -2229,6 +2229,163 @@ svg.leaflet-image-layer.leaflet-interactive path {
 .bj-tc-rank{font-size:9px;color:var(--text-muted);font-family:var(--font-mono);margin-right:6px}
 .bj-tc-num{width:72px;text-align:right;font-family:var(--font-mono);color:var(--text-muted);flex-shrink:0}
 .bj-tc-total{width:56px;text-align:right;font-family:var(--font-mono);font-weight:600;color:var(--text-primary);flex-shrink:0}
+
+/* ================================================================
+   MOBILE OPTIMISATION  (<= 900px)
+   Long-scroll layout, touch targets, no horizontal overflow
+   ================================================================ */
+@media (max-width: 900px) {
+
+  /* ---------- SHELL: natural page scroll ---------- */
+  html, body { overflow-x: hidden; }
+  #app  { height: auto; min-height: 100vh; }
+  #main { flex: none; overflow: visible; position: static; height: auto; }
+
+  /* ---------- NAV: brand row + scrollable tab row ---------- */
+  #topnav {
+    height: auto; min-height: 0;
+    flex-direction: column; align-items: stretch;
+    padding: 0;
+    position: sticky; top: 0; z-index: 900;
+  }
+  .nav-brand {
+    padding: 9px 14px 7px;
+    border-right: none; margin-right: 0;
+    border-bottom: 1px solid var(--border-dim);
+    justify-content: space-between;
+  }
+  .nav-brand-title { font-size: 15px; }
+  .nav-brand-sub   { font-size: 9px; }
+  .nav-tabs {
+    height: 46px; flex: none;
+    overflow-x: auto; overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+  .nav-tab {
+    height: 46px; padding: 0 13px;
+    font-size: 12px; white-space: nowrap; flex-shrink: 0;
+  }
+  .nav-meta { display: none; }
+
+  /* ---------- TAB PANELS: flow instead of absolute ---------- */
+  .tab-panel {
+    position: relative; inset: auto;
+    height: auto; overflow: visible;
+    display: none; opacity: 1; pointer-events: auto;
+    transition: none;
+  }
+  .tab-panel.active { display: block; }
+
+  /* ---------- TOPBARS ---------- */
+  .command-topbar, .state-dive-topbar, .compare-topbar,
+  .explorer-topbar, .playbook-topbar {
+    padding: 11px 14px; gap: 9px;
+  }
+  .command-topbar-title, .compare-topbar-title,
+  .explorer-topbar-title, .playbook-title { font-size: 16px; }
+  .playbook-topbar { flex-wrap: wrap; }
+
+  /* ---------- LAYOUT GRIDS -> stacked ---------- */
+  .command-body, .state-dive-body, .compare-body,
+  .explorer-body, .explorer-main, .bj-body {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto !important;
+  }
+  .compare-quadrant, .state-map-panel, .explorer-sidebar {
+    height: auto !important;
+    overflow: visible !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-dim);
+  }
+  .explorer-sidebar { flex-direction: row; flex-wrap: wrap; }
+  .explorer-sidebar .filter-section { flex: 1 1 46%; min-width: 0; }
+
+  .nbfc-scorecard-grid { grid-template-columns: 1fr 1fr !important; gap: 8px; }
+  .playbook-kpi-row    { grid-template-columns: 1fr 1fr !important; gap: 9px; }
+  .kpi-grid-2          { grid-template-columns: 1fr 1fr !important; }
+  .conc-grid           { grid-template-columns: 1fr 1fr !important; }
+  .product-maps-grid   { grid-template-columns: 1fr 1fr !important; }
+
+  /* ---------- BAJAJ TAB ---------- */
+  .bj-kpi-row { flex-direction: column; gap: 9px; }
+  .bj-kpi-card, .bj-total-card { width: 100%; min-width: 0; }
+  .bj-donut-card { margin-bottom: 16px; }
+  .bj-tc-num { width: 52px; font-size: 10px; }
+  .bj-tc-total { width: 48px; }
+  .bj-tbl-hdr, .bj-tbl-row { font-size: 10px; }
+
+  /* ---------- MAPS ---------- */
+  #india-map-container { height: 400px !important; }
+  #india-svg-map { width: 100%; height: 100%; }
+  #state-leaflet-map    { height: 330px !important; }
+  #explorer-leaflet-map { height: 300px !important; }
+  .leaflet-container { height: 330px !important; }
+  .map-legend { bottom: 8px; left: 8px; padding: 8px 10px; }
+
+  /* ---------- SIDE PANELS -> stacked blocks ---------- */
+  .panel-right, #state-chart-panel, #state-info-panel {
+    position: static !important;
+    width: auto !important; height: auto !important;
+    max-height: none !important;
+    border-left: none !important;
+    border-top: 1px solid var(--border-dim);
+  }
+  #state-info-panel { transform: none !important; opacity: 1 !important; }
+  .branch-drawer { width: 86% !important; max-width: 340px; }
+
+  /* ---------- TABLES -> horizontal scroll ---------- */
+  .bj-table-wrap, .compare-table-wrap, .explorer-table-wrap,
+  .state-table-wrap, .heat-table-wrap, .table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .bj-table, .compare-table, .explorer-table, .branch-table, .heat-table {
+    min-width: 560px;
+  }
+
+  /* ---------- TOUCH TARGETS ---------- */
+  .nbfc-pill   { padding: 9px 14px; font-size: 12px; min-height: 38px; }
+  .metric-btn  { padding: 10px 15px; font-size: 12px; min-height: 40px; }
+  .filter-select, .filter-input, .state-select, .search-input {
+    min-height: 40px; font-size: 14px;
+  }
+  .export-btn { min-height: 40px; padding: 0 16px; }
+  .city-bar, .nbfc-bar-row, .bj-tbl-row, .pb-state-row { min-height: 34px; }
+  .bj-kpi-card { min-height: 44px; }
+  .state-bar-item { min-width: 26px; }
+
+  /* ---------- TYPOGRAPHY ---------- */
+  .kpi-mini .num  { font-size: 26px; }
+  .bj-total-num   { font-size: 32px; }
+  .bj-kpi-num     { font-size: 24px; }
+  .sc-metric-val  { font-size: 22px; }
+  .pk-num         { font-size: 26px; }
+  .state-dive-title { font-size: 16px; }
+
+  /* ---------- SPACING ---------- */
+  .panel-section { padding: 14px; }
+  .compare-quadrant { padding: 14px; }
+  .radar { max-width: 100%; height: auto; }
+
+  /* ---------- HIDE hover-only affordances ---------- */
+  .tooltip { display: none !important; }
+}
+
+/* ---------- NARROW PHONES (<= 480px) ---------- */
+@media (max-width: 480px) {
+  .nbfc-scorecard-grid, .playbook-kpi-row,
+  .conc-grid, .product-maps-grid { grid-template-columns: 1fr !important; }
+  .kpi-grid-2 { grid-template-columns: 1fr 1fr !important; }
+  #india-map-container { height: 340px !important; }
+  .nav-tab { padding: 0 11px; font-size: 11.5px; }
+  .explorer-sidebar .filter-section { flex: 1 1 100%; }
+}
+
 </style>
 </head>
 <body>
@@ -2844,6 +3001,13 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     tab.classList.add('active');
     document.getElementById('tab-' + id).classList.add('active');
+    if (window.innerWidth <= 900) {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      setTimeout(function(){
+        if (typeof leafletMap !== 'undefined' && leafletMap) leafletMap.invalidateSize();
+        if (typeof explorerMap !== 'undefined' && explorerMap) explorerMap.invalidateSize();
+      }, 120);
+    }
   });
 });
 
